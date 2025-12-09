@@ -1,0 +1,263 @@
+/* ============================================
+   ADMIN LOGIN SPECIFIC STYLES
+   ONLY AFFECTS THE LOGIN FORM AREA
+   ============================================ */
+
+/* Admin Login Container - Targets only admin login */
+body.admin-login-page main .login-container .admin-login-box {
+    box-shadow: 0 15px 40px rgba(26, 35, 126, 0.15);
+    border-top: 4px solid #3949ab;
+}
+
+/* Left Box - Admin Theme */
+body.admin-login-page .admin-box-left {
+    background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%) !important;
+}
+
+body.admin-login-page .admin-box-left .logo i {
+    background: #5c6bc0 !important;
+    color: white !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.admin-login-page .admin-box-left h2 {
+    color: white !important;
+}
+
+body.admin-login-page .admin-subtitle {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 16px !important;
+    margin-bottom: 30px !important;
+}
+
+/* Admin Features */
+body.admin-login-page .admin-features {
+    margin: 30px 0 !important;
+}
+
+body.admin-login-page .feature-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+body.admin-login-page .feature-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+body.admin-login-page .feature-item i {
+    color: #bbdefb !important;
+    font-size: 20px;
+    margin-right: 15px;
+    margin-top: 3px;
+}
+
+body.admin-login-page .feature-item h4 {
+    color: white !important;
+    font-size: 16px;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+body.admin-login-page .feature-item p {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 13px;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Security Notice */
+body.admin-login-page .security-notice {
+    background: rgba(255, 152, 0, 0.1);
+    border-left: 4px solid #ff9800;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 30px;
+    display: flex;
+    align-items: flex-start;
+}
+
+body.admin-login-page .security-notice i {
+    color: #ff9800 !important;
+    margin-right: 10px;
+    font-size: 18px;
+    margin-top: 2px;
+}
+
+body.admin-login-page .security-notice p {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 13px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Right Box - Admin Form */
+body.admin-login-page .admin-box-right .admin-login-form h2 {
+    color: #1a237e !important;
+}
+
+/* Form Labels */
+body.admin-login-page .admin-login-form .form-group label i {
+    color: #3949ab !important;
+}
+
+/* Input Focus */
+body.admin-login-page .admin-login-form .input-with-icon input:focus {
+    border-color: #3949ab !important;
+    box-shadow: 0 0 0 3px rgba(57, 73, 171, 0.1) !important;
+}
+
+/* Forgot Link */
+body.admin-login-page .admin-login-form .forgot-link {
+    color: #3949ab !important;
+}
+
+body.admin-login-page .admin-login-form .forgot-link:hover {
+    color: #1a237e !important;
+}
+
+/* Remember Me Checkbox */
+body.admin-login-page .admin-login-form .remember-me input {
+    accent-color: #3949ab !important;
+}
+
+/* Admin Submit Button */
+body.admin-login-page .admin-submit-btn {
+    background: linear-gradient(135deg, #3949ab 0%, #1a237e 100%) !important;
+}
+
+body.admin-login-page .admin-submit-btn:hover {
+    background: linear-gradient(135deg, #303f9f 0%, #0d1b6e 100%) !important;
+    box-shadow: 0 8px 20px rgba(57, 73, 171, 0.3) !important;
+}
+
+/* Admin Social Buttons */
+body.admin-login-page .admin-social-btn.microsoft {
+    color: #0078d4 !important;
+    border-color: #0078d4 !important;
+}
+
+body.admin-login-page .admin-social-btn.microsoft:hover {
+    background: #0078d4 !important;
+    color: white !important;
+}
+
+body.admin-login-page .admin-social-btn.google {
+    color: #db4437 !important;
+    border-color: #db4437 !important;
+}
+
+body.admin-login-page .admin-social-btn.google:hover {
+    background: #db4437 !important;
+    color: white !important;
+}
+
+/* Signup Link */
+body.admin-login-page .admin-login-form .signup-link a {
+    color: #3949ab !important;
+}
+
+body.admin-login-page .admin-login-form .signup-link a:hover {
+    color: #1a237e !important;
+}
+
+/* Admin Success Message */
+body.admin-login-page .admin-login-success .success-content i {
+    color: #4caf50 !important;
+}
+
+body.admin-login-page .admin-login-success .success-content h3 {
+    color: #1a237e !important;
+}
+
+/* Admin Decoration Circles */
+body.admin-login-page .admin-box-decoration .admin-circle {
+    background: rgba(57, 73, 171, 0.1) !important;
+}
+
+body.admin-login-page .admin-box-decoration .circle-2 {
+    background: rgba(74, 107, 255, 0.05) !important;
+}
+
+body.admin-login-page .admin-box-decoration .circle-3 {
+    background: rgba(108, 92, 231, 0.08) !important;
+}
+
+/* Secure Session Option */
+body.admin-login-page .secure-session {
+    display: flex;
+    align-items: center;
+}
+
+body.admin-login-page .secure-session input {
+    margin-right: 8px;
+    accent-color: #3949ab !important;
+}
+
+body.admin-login-page .secure-session label {
+    color: #555;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Back Link */
+body.admin-login-page .back-link a {
+    color: #666 !important;
+}
+
+body.admin-login-page .back-link a:hover {
+    color: #3949ab !important;
+}
+
+/* Admin Footer Note */
+body.admin-login-page .admin-footer-note {
+    background: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    color: #666;
+}
+
+body.admin-login-page .admin-footer-note i {
+    color: #ff6b6b !important;
+    margin-right: 10px;
+    font-size: 14px;
+}
+
+/* Responsive Adjustments for Admin */
+@media (max-width: 992px) {
+    body.admin-login-page .admin-login-box {
+        flex-direction: column;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    body.admin-login-page .admin-box-left,
+    body.admin-login-page .admin-box-right {
+        width: 100%;
+    }
+    
+    body.admin-login-page .admin-box-left {
+        border-radius: 20px 20px 0 0;
+        padding: 40px 30px;
+    }
+    
+    body.admin-login-page .admin-box-right {
+        border-radius: 0 0 20px 20px;
+        padding: 40px 30px;
+    }
+}
+
+@media (max-width: 576px) {
+    body.admin-login-page .feature-item {
+        padding: 12px;
+    }
+}
