@@ -337,6 +337,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordInput = document.getElementById('password');
     const confirmPasswordInput = document.getElementById('confirmPassword');
     const emailInput = document.getElementById('email');
+    const firstNameInput = document.getElementById('firstName');
+    const lastNameInput = document.getElementById('lastName');
+    const studentIdInput = document.getElementById('studentId');
+    const courseSelect = document.getElementById('course');
+    const yearLevelSelect = document.getElementById('yearLevel');
+    const termsCheckbox = document.getElementById('terms');
+
+    // If we are not on the signup page, skip the validation logic to avoid null errors
+    if (!form || !passwordInput || !confirmPasswordInput || !emailInput) {
+        return;
+    }
 
     // Validate email format (basic university email check)
     function validateEmail(email) {
@@ -424,10 +435,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
         document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
 
-        // Validate each field
-        const fullName = document.getElementById('fullName');
-        if (!fullName.value.trim()) {
-            showError(fullName, 'Full name is required');
+        // Validate each field (mapped to actual signup.php inputs)
+        if (firstNameInput && !firstNameInput.value.trim()) {
+            showError(firstNameInput, 'First name is required');
+            isValid = false;
+        }
+
+        if (lastNameInput && !lastNameInput.value.trim()) {
+            showError(lastNameInput, 'Last name is required');
             isValid = false;
         }
 
@@ -436,15 +451,18 @@ document.addEventListener('DOMContentLoaded', function() {
             isValid = false;
         }
 
-        const studentID = document.getElementById('studentID');
-        if (!studentID.value.trim()) {
-            showError(studentID, 'Student ID is required');
+        if (studentIdInput && !studentIdInput.value.trim()) {
+            showError(studentIdInput, 'Student ID is required');
             isValid = false;
         }
 
-        const major = document.getElementById('major');
-        if (!major.value) {
-            showError(major, 'Please select your major');
+        if (courseSelect && !courseSelect.value) {
+            showError(courseSelect, 'Please select your course');
+            isValid = false;
+        }
+
+        if (yearLevelSelect && !yearLevelSelect.value) {
+            showError(yearLevelSelect, 'Please select your year level');
             isValid = false;
         }
 
@@ -458,8 +476,7 @@ document.addEventListener('DOMContentLoaded', function() {
             isValid = false;
         }
 
-        const terms = document.getElementById('terms');
-        if (!terms.checked) {
+        if (termsCheckbox && !termsCheckbox.checked) {
             alert('You must agree to the Terms of Service to continue.');
             isValid = false;
         }

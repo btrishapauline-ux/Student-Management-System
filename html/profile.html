@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Student Profile | Bicol University</title>
+  <meta name="description" content="Student Profile Dashboard">
+  <meta name="keywords" content="student, profile, dashboard, university">
+
+  <!-- Favicons -->
+  <link href="assets/img/favicon.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Jost:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="assets/css/main.css" rel="stylesheet">
+  
+  <!-- Student Profile CSS -->
+  <link href="assets/css/student-profile.css" rel="stylesheet">
+</head>
+
+<body class="student-profile-page">
+
+  <!-- Header -->
+  <header id="header" class="header d-flex align-items-center fixed-top">
+    <div class="container-fluid container-xl position-relative d-flex align-items-center">
+
+      <!-- Logo -->
+      <a href="index.html" class="logo d-flex align-items-center me-auto">
+        <h1 class="sitename">BICOL UNIVERSITY</h1>
+      </a>
+
+      <!-- Navigation Menu -->
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="student-profile.html" class="active">Profile</a></li>
+          <li><a href="student-courses.html">Courses</a></li>
+          <li><a href="student-grades.html">Grades</a></li>
+          <li><a href="student-schedule.html">Schedule</a></li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      </nav>
+
+      <!-- Profile Dropdown -->
+      <div class="profile-dropdown">
+        <div class="profile-trigger" id="profileTrigger">
+          <div class="profile-avatar">
+            <img src="assets/img/student-avatar.jpg" alt="Student Avatar" id="profileAvatar">
+          </div>
+          <div class="profile-info">
+            <span class="profile-name" id="profileName">Juan Dela Cruz</span>
+            <span class="profile-role">Student</span>
+          </div>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        
+        <div class="profile-dropdown-menu" id="profileDropdown">
+          <div class="dropdown-header">
+            <img src="assets/img/student-avatar.jpg" alt="Student Avatar" id="dropdownAvatar">
+            <div>
+              <h6 id="dropdownName">Juan Dela Cruz</h6>
+              <span>BS Computer Science</span>
+            </div>
+          </div>
+          <div class="dropdown-divider"></div>
+          <a href="student-profile.html" class="dropdown-item">
+            <i class="bi bi-person"></i> My Profile
+          </a>
+          <a href="student-settings.html" class="dropdown-item">
+            <i class="bi bi-gear"></i> Settings
+          </a>
+          <div class="dropdown-divider"></div>
+          <a href="index.html" class="dropdown-item">
+            <i class="bi bi-box-arrow-right"></i> Logout
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Profile Content Section -->
+    <section class="profile-content section">
+      <div class="container">
+        
+        <!-- Profile Header Card -->
+        <div class="profile-header-card">
+          <div class="profile-avatar-section">
+            <!-- Circular Avatar Container -->
+            <div class="profile-avatar-container">
+              <div class="avatar-wrapper">
+                <img src="assets/img/student-avatar.jpg" alt="Juan Dela Cruz" class="profile-main-avatar" id="mainProfileAvatar">
+                <button class="avatar-upload-btn" id="changeAvatarBtn" title="Change Profile Picture">
+                  <i class="bi bi-camera"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Profile Info -->
+            <div class="profile-info-main">
+              <h1 class="student-name" id="mainProfileName">Juan Dela Cruz</h1>
+              <p class="student-id">Student ID: 2023-00123</p>
+              <div class="program-badges">
+                <span class="program-badge">BS Computer Science</span>
+                <span class="year-badge">3rd Year</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Progress Section -->
+          <div class="progress-section">
+            <h4>Program Progress</h4>
+            <div class="progress-bar-container">
+              <div class="progress-bar" style="width: 65%;"></div>
+            </div>
+            <div class="progress-text">
+              <span>65% Complete</span>
+              <span>78 of 120 credits</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <!-- Main Content Column -->
+          <div class="col-lg-8">
+            
+            <!-- Tabs Navigation -->
+            <div class="profile-tabs-nav">
+              <ul class="nav nav-tabs-custom" id="profileTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button">
+                    <i class="bi bi-person-vcard"></i> Personal Info
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="academic-tab" data-bs-toggle="tab" data-bs-target="#academic" type="button">
+                    <i class="bi bi-journal-bookmark"></i> Academic
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact-info" type="button">
+                    <i class="bi bi-telephone"></i> Contact
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button">
+                    <i class="bi bi-folder"></i> Documents
+                  </button>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="tab-content" id="profileTabContent">
+              
+              <!-- Personal Information Tab -->
+              <div class="tab-pane fade show active" id="personal" role="tabpanel">
+                <div class="info-grid">
+                  <div class="info-card">
+                    <h5>Personal Information</h5>
+                    <div class="info-item">
+                      <label>FULL NAME</label>
+                      <p id="infoFullName">Juan Dela Cruz</p>
+                    </div>
+                    <div class="info-item">
+                      <label>DATE OF BIRTH</label>
+                      <p id="infoDob">May 15, 2002</p>
+                    </div>
+                    <div class="info-item">
+                      <label>GENDER</label>
+                      <p id="infoGender">Male</p>
+                    </div>
+                    <div class="info-item">
+                      <label>ADDRESS</label>
+                      <p id="infoAddress">123 University Ave, Legazpi City, Albay, Philippines</p>
+                    </div>
+                  </div>
+                  
+                  <div class="info-card">
+                    <h5>Additional Details</h5>
+                    <div class="info-item">
+                      <label>NATIONALITY</label>
+                      <p id="infoNationality">Filipino</p>
+                    </div>
+                    <div class="info-item">
+                      <label>MARITAL STATUS</label>
+                      <p id="infoMaritalStatus">Single</p>
+                    </div>
+                    <div class="info-item">
+                      <label>BLOOD TYPE</label>
+                      <p id="infoBloodType">O+</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm mt-3" id="editPersonalBtn">
+                      <i class="bi bi-pencil"></i> Edit Information
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Recent Activities -->
+                <div class="recent-activities">
+                  <h5>Recent Activities</h5>
+                  <div class="activity-list">
+                    <div class="activity-item">
+                      <div class="activity-icon blue">
+                        <i class="bi bi-check-circle"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Enrolled in "Data Structures" course</h6>
+                        <small>Today, 10:30 AM</small>
+                      </div>
+                    </div>
+                    
+                    <div class="activity-item">
+                      <div class="activity-icon green">
+                        <i class="bi bi-arrow-up-circle"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Submitted assignment for Algorithms</h6>
+                        <small>Yesterday, 3:45 PM</small>
+                      </div>
+                    </div>
+                    
+                    <div class="activity-item">
+                      <div class="activity-icon orange">
+                        <i class="bi bi-calendar-check"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Upcoming exam: Database Systems</h6>
+                        <small>March 25, 2024 • 2 days from now</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Academic Information Tab -->
+              <div class="tab-pane fade" id="academic" role="tabpanel">
+                <div class="info-grid">
+                  <div class="info-card">
+                    <h5>Academic Information</h5>
+                    <div class="info-item">
+                      <label>STUDENT ID</label>
+                      <p>2023-00123</p>
+                    </div>
+                    <div class="info-item">
+                      <label>PROGRAM</label>
+                      <p>BS Computer Science</p>
+                    </div>
+                    <div class="info-item">
+                      <label>YEAR LEVEL</label>
+                      <p>3rd Year</p>
+                    </div>
+                    <div class="info-item">
+                      <label>COLLEGE</label>
+                      <p>College of Science</p>
+                    </div>
+                  </div>
+                  
+                  <div class="info-card">
+                    <h5>Academic Status</h5>
+                    <div class="info-item">
+                      <label>CURRENT GPA</label>
+                      <p>3.85 / 4.0</p>
+                    </div>
+                    <div class="info-item">
+                      <label>TOTAL CREDITS</label>
+                      <p>78 credits completed</p>
+                    </div>
+                    <div class="info-item">
+                      <label>ACADEMIC STANDING</label>
+                      <p class="text-success">Good Standing ✓</p>
+                    </div>
+                    <div class="info-item">
+                      <label>SCHOLARSHIP</label>
+                      <p>Academic Excellence Scholarship</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Contact Information Tab -->
+              <div class="tab-pane fade" id="contact-info" role="tabpanel">
+                <div class="info-grid">
+                  <div class="info-card">
+                    <h5>Contact Information</h5>
+                    <div class="info-item">
+                      <label>EMAIL ADDRESS</label>
+                      <p id="infoEmail">juan.delacruz@bicol-u.edu.ph</p>
+                    </div>
+                    <div class="info-item">
+                      <label>PHONE NUMBER</label>
+                      <p id="infoPhone">+63 912 345 6789</p>
+                    </div>
+                  </div>
+                  
+                  <div class="info-card">
+                    <h5>Emergency Contact</h5>
+                    <div class="info-item">
+                      <label>CONTACT PERSON</label>
+                      <p id="infoEmergencyContact">Maria Dela Cruz</p>
+                    </div>
+                    <div class="info-item">
+                      <label>RELATIONSHIP</label>
+                      <p>Mother</p>
+                    </div>
+                    <div class="info-item">
+                      <label>PHONE NUMBER</label>
+                      <p id="infoEmergencyPhone">+63 923 456 7890</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm mt-3" id="editContactBtn">
+                      <i class="bi bi-pencil"></i> Edit Contact
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Documents Tab -->
+              <div class="tab-pane fade" id="documents" role="tabpanel">
+                <div class="document-list">
+                  <div class="document-item">
+                    <div class="document-icon pdf">
+                      <i class="bi bi-file-earmark-pdf"></i>
+                    </div>
+                    <div class="document-info">
+                      <h6>Transcript of Records</h6>
+                      <small>Uploaded: Jan 15, 2024 • Size: 2.4 MB</small>
+                    </div>
+                    <div class="document-actions">
+                      <button class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-download"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="document-item">
+                    <div class="document-icon image">
+                      <i class="bi bi-file-earmark-image"></i>
+                    </div>
+                    <div class="document-info">
+                      <h6>ID Picture</h6>
+                      <small>Uploaded: Dec 10, 2023 • Size: 1.2 MB</small>
+                    </div>
+                    <div class="document-actions">
+                      <button class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-download"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="document-item">
+                    <div class="document-icon word">
+                      <i class="bi bi-file-earmark-word"></i>
+                    </div>
+                    <div class="document-info">
+                      <h6>Application Form</h6>
+                      <small>Uploaded: Aug 5, 2023 • Size: 850 KB</small>
+                    </div>
+                    <div class="document-actions">
+                      <button class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-download"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <button class="btn btn-primary btn-sm mt-3">
+                    <i class="bi bi-cloud-upload"></i> Upload Document
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Sidebar Column -->
+          <div class="col-lg-4 profile-sidebar">
+            
+            <!-- Quick Actions -->
+            <div class="sidebar-section">
+              <h4>Quick Actions</h4>
+              <div class="quick-actions-list">
+                <button class="quick-action-btn" onclick="window.location.href='student-courses.html'">
+                  <i class="bi bi-journal-text"></i>
+                  <span>View Courses</span>
+                </button>
+                
+                <button class="quick-action-btn" onclick="window.location.href='student-grades.html'">
+                  <i class="bi bi-graph-up"></i>
+                  <span>Check Grades</span>
+                </button>
+                
+                <button class="quick-action-btn" onclick="window.location.href='student-schedule.html'">
+                  <i class="bi bi-calendar-week"></i>
+                  <span>View Schedule</span>
+                </button>
+                
+                <button class="quick-action-btn" onclick="window.location.href='student-payments.html'">
+                  <i class="bi bi-credit-card"></i>
+                  <span>Payments</span>
+                </button>
+                
+                <button class="quick-action-btn" id="printProfileBtn">
+                  <i class="bi bi-printer"></i>
+                  <span>Print Profile</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Upcoming Events -->
+            <div class="sidebar-section">
+              <h4>Upcoming Events</h4>
+              <div class="event-list">
+                <div class="event-item">
+                  <div class="event-date">
+                    <span class="event-day">25</span>
+                    <span class="event-month">MAR</span>
+                  </div>
+                  <div class="event-details">
+                    <h6>Midterm Exams Begin</h6>
+                    <small>All Departments</small>
+                  </div>
+                </div>
+                
+                <div class="event-item">
+                  <div class="event-date">
+                    <span class="event-day">05</span>
+                    <span class="event-month">APR</span>
+                  </div>
+                  <div class="event-details">
+                    <h6>University Foundation Day</h6>
+                    <small>No Classes</small>
+                  </div>
+                </div>
+                
+                <div class="event-item">
+                  <div class="event-date">
+                    <span class="event-day">15</span>
+                    <span class="event-month">APR</span>
+                  </div>
+                  <div class="event-details">
+                    <h6>Final Submission Deadline</h6>
+                    <small>Research Papers</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Important Contacts -->
+            <div class="sidebar-section">
+              <h4>Important Contacts</h4>
+              <div class="contact-list">
+                <div class="contact-item">
+                  <div class="contact-icon">
+                    <i class="bi bi-person-badge"></i>
+                  </div>
+                  <div class="contact-info">
+                    <h6>Academic Advisor</h6>
+                    <small>Dr. Maria Santos</small>
+                    <small>maria.santos@bicol-u.edu.ph</small>
+                  </div>
+                </div>
+                
+                <div class="contact-item">
+                  <div class="contact-icon">
+                    <i class="bi bi-headset"></i>
+                  </div>
+                  <div class="contact-info">
+                    <h6>Student Support</h6>
+                    <small>(052) 742-1234</small>
+                    <small>support@bicol-u.edu.ph</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer id="footer" class="footer">
+    <div class="container copyright text-center mt-4">
+      <p>© <span>Copyright</span> <strong class="px-1 sitename">Bicol University</strong> <span>All Rights Reserved</span></p>
+      <div class="credits">
+        Student Management System v2.0
+      </div>
+    </div>
+  </footer>
+
+  <!-- Avatar Upload Modal -->
+  <div class="modal fade" id="avatarUploadModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Change Profile Picture</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="avatar-preview text-center mb-4">
+            <div class="avatar-preview-container">
+              <img src="assets/img/student-avatar.jpg" alt="Preview" id="avatarPreview">
+            </div>
+            <small class="text-muted">Preview of your new profile picture</small>
+          </div>
+          
+          <div class="upload-options">
+            <div class="upload-option">
+              <input type="file" id="avatarFileInput" accept="image/*" hidden>
+              <label for="avatarFileInput" class="upload-btn">
+                <i class="bi bi-upload"></i> Upload New Photo
+              </label>
+            </div>
+            
+            <div class="upload-option">
+              <button class="default-btn" id="useDefaultBtn">
+                <i class="bi bi-person-circle"></i> Use Default Avatar
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveAvatarBtn" disabled>Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Info Modal -->
+  <div class="modal fade" id="editInfoModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editModalTitle">Edit Information</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editInfoForm">
+            <div class="mb-3">
+              <label class="form-label">Full Name</label>
+              <input type="text" class="form-control" id="editFullName">
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label">Date of Birth</label>
+                  <input type="date" class="form-control" id="editDob">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label">Gender</label>
+                  <select class="form-select" id="editGender">
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Address</label>
+              <textarea class="form-control" id="editAddress" rows="2"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveInfoBtn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vendor JS Files -->
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/aos/aos.js"></script>
+  
+  <!-- Student Profile JS -->
+  <script src="assets/js/student-profile.js"></script>
+</body>
+</html>

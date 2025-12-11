@@ -1,114 +1,14 @@
-// Admin Dashboard JavaScript
+// Admin Dashboard JavaScript (wired to PHP backend)
 
-// Mock data for students (in a real application, this would come from an API)
-let students = [
-    {
-        id: 1,
-        firstName: "Juan",
-        lastName: "Dela Cruz",
-        studentId: "2023-00123",
-        email: "juan.delacruz@bicol-u.edu.ph",
-        program: "BS Computer Science",
-        yearLevel: "3rd Year",
-        dateOfBirth: "2002-05-15",
-        gender: "Male",
-        address: "123 University Ave, Legazpi City, Albay, Philippines",
-        phoneNumber: "+63 912 345 6789",
-        isActive: true,
-        enrollmentDate: "2023-08-15",
-        gpa: 3.85
-    },
-    {
-        id: 2,
-        firstName: "Maria",
-        lastName: "Santos",
-        studentId: "2023-00124",
-        email: "maria.santos@bicol-u.edu.ph",
-        program: "BS Information Technology",
-        yearLevel: "2nd Year",
-        dateOfBirth: "2003-07-22",
-        gender: "Female",
-        address: "456 College Road, Naga City, Camarines Sur",
-        phoneNumber: "+63 923 456 7890",
-        isActive: true,
-        enrollmentDate: "2023-08-20",
-        gpa: 3.92
-    },
-    {
-        id: 3,
-        firstName: "John",
-        lastName: "Smith",
-        studentId: "2023-00125",
-        email: "john.smith@bicol-u.edu.ph",
-        program: "BS Computer Engineering",
-        yearLevel: "4th Year",
-        dateOfBirth: "2001-03-10",
-        gender: "Male",
-        address: "789 Tech Street, Iriga City",
-        phoneNumber: "+63 934 567 8901",
-        isActive: false,
-        enrollmentDate: "2023-08-18",
-        gpa: 3.45
-    },
-    {
-        id: 4,
-        firstName: "Ana",
-        lastName: "Reyes",
-        studentId: "2023-00126",
-        email: "ana.reyes@bicol-u.edu.ph",
-        program: "BS Information Systems",
-        yearLevel: "1st Year",
-        dateOfBirth: "2004-11-30",
-        gender: "Female",
-        address: "101 Innovation Drive, Daraga, Albay",
-        phoneNumber: "+63 945 678 9012",
-        isActive: true,
-        enrollmentDate: "2023-08-25",
-        gpa: 3.78
-    },
-    {
-        id: 5,
-        firstName: "Carlos",
-        lastName: "Lim",
-        studentId: "2023-00127",
-        email: "carlos.lim@bicol-u.edu.ph",
-        program: "BS Electronics Engineering",
-        yearLevel: "5th Year",
-        dateOfBirth: "2000-09-05",
-        gender: "Male",
-        address: "222 Engineering Blvd, Tabaco City",
-        phoneNumber: "+63 956 789 0123",
-        isActive: true,
-        enrollmentDate: "2023-08-22",
-        gpa: 3.65
-    }
-];
-
-// Global variables
+let students = [];
 let currentPage = 1;
 const itemsPerPage = 10;
 let currentStudentId = null;
 
-// Initialize the page
 document.addEventListener('DOMContentLoaded', function() {
     initProfileDropdown();
-    loadStudents();
+    fetchStudents();
     setupEventListeners();
-    updateStats();
-    
-    // Check if there are students in localStorage on first load
-    if (localStorage.getItem('students')) {
-        try {
-            const savedStudents = JSON.parse(localStorage.getItem('students'));
-            if (Array.isArray(savedStudents) && savedStudents.length > 0) {
-                students = savedStudents;
-                loadStudents();
-                updateStats();
-            }
-        } catch (error) {
-            console.error('Error loading students from localStorage:', error);
-        }
-    }
 });
 
 // Initialize profile dropdown
@@ -134,85 +34,81 @@ function initProfileDropdown() {
     }
 }
 
-// Load students into the table
-function loadStudents(searchTerm = '') {
+async function fetchStudents(searchTerm = '') {
     const tableBody = document.getElementById('studentsTableBody');
     const loadingState = document.getElementById('loadingState');
     const emptyState = document.getElementById('emptyState');
     const paginationContainer = document.getElementById('paginationContainer');
-    
-    // Show loading
+
     loadingState.classList.add('active');
     tableBody.innerHTML = '';
     emptyState.classList.remove('active');
-    
-    // Filter students based on search term
-    let filteredStudents = students;
-    if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        filteredStudents = students.filter(student => 
-            student.firstName.toLowerCase().includes(term) ||
-            student.lastName.toLowerCase().includes(term) ||
-            student.studentId.toLowerCase().includes(term) ||
-            student.email.toLowerCase().includes(term) ||
-            student.program.toLowerCase().includes(term) ||
-            student.yearLevel.toLowerCase().includes(term)
-        );
-    }
-    
-    // Simulate API delay
-    setTimeout(() => {
+
+    const url = searchTerm
+        ? `students_api.php?action=search&q=${encodeURIComponent(searchTerm)}`
+        : 'students_api.php?action=list';
+
+    try {
+        const res = await fetch(url, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load students');
+        students = Array.isArray(data.data) ? data.data : [];
+    } catch (err) {
+        console.error(err);
+        showNotification('Error loading students', 'error');
         loadingState.classList.remove('active');
-        
-        if (filteredStudents.length === 0) {
-            emptyState.classList.add('active');
-            paginationContainer.classList.add('d-none');
-            return;
-        }
-        
-        paginationContainer.classList.remove('d-none');
-        
-        // Calculate pagination
-        const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const pageStudents = filteredStudents.slice(startIndex, endIndex);
-        
-        // Generate table rows
-        pageStudents.forEach(student => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${student.studentId}</td>
-                <td>${student.firstName} ${student.lastName}</td>
-                <td>${student.program}</td>
-                <td>${student.yearLevel}</td>
-                <td>${student.email}</td>
-                <td>
-                    <span class="status-badge ${student.isActive ? 'status-active' : 'status-inactive'}">
-                        ${student.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                </td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="action-btn view" onclick="viewStudent(${student.id})" title="View Details">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                        <button class="action-btn edit" onclick="editStudent(${student.id})" title="Edit">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="action-btn delete" onclick="confirmDeleteStudent(${student.id})" title="Delete">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            `;
-            tableBody.appendChild(row);
-        });
-        
-        // Generate pagination
-        generatePagination(totalPages);
-        
-    }, 500); // Simulated API delay
+        emptyState.classList.add('active');
+        paginationContainer.classList.add('d-none');
+        return;
+    }
+
+    loadingState.classList.remove('active');
+
+    if (students.length === 0) {
+        emptyState.classList.add('active');
+        paginationContainer.classList.add('d-none');
+        return;
+    }
+
+    paginationContainer.classList.remove('d-none');
+
+    const totalPages = Math.ceil(students.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const pageStudents = students.slice(startIndex, endIndex);
+
+    pageStudents.forEach(student => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${student.studentId}</td>
+            <td>${student.firstName} ${student.lastName}</td>
+            <td>${student.program}</td>
+            <td>${student.yearLevel}</td>
+            <td>${student.email}</td>
+            <td>
+                <span class="status-badge ${student.isActive ? 'status-active' : 'status-inactive'}">
+                    ${student.isActive ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="action-btn view" onclick="viewStudent(${student.id})" title="View Details">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="action-btn edit" onclick="editStudent(${student.id})" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="action-btn delete" onclick="confirmDeleteStudent(${student.id})" title="Delete">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    generatePagination(totalPages);
+    updateStats();
 }
 
 // Generate pagination buttons
@@ -267,13 +163,13 @@ function setupEventListeners() {
     
     searchInput.addEventListener('input', function() {
         currentPage = 1;
-        loadStudents(this.value);
+        fetchStudents(this.value);
     });
     
     clearSearch.addEventListener('click', function() {
         searchInput.value = '';
         currentPage = 1;
-        loadStudents();
+        fetchStudents();
     });
     
     // Add student button
@@ -300,7 +196,7 @@ function setupEventListeners() {
     // Quick action buttons
     document.getElementById('refreshDataBtn').addEventListener('click', function() {
         currentPage = 1;
-        loadStudents();
+        fetchStudents();
         updateStats();
         showNotification('Data refreshed successfully!', 'success');
     });
@@ -351,7 +247,7 @@ function updateStats() {
 }
 
 // Save new student
-function saveStudent() {
+async function saveStudent() {
     const form = document.getElementById('addStudentForm');
     if (!form.checkValidity()) {
         form.classList.add('was-validated');
@@ -359,38 +255,42 @@ function saveStudent() {
     }
     
     const newStudent = {
-        id: students.length > 0 ? Math.max(...students.map(s => s.id)) + 1 : 1,
         firstName: document.getElementById('firstName').value,
         lastName: document.getElementById('lastName').value,
         studentId: document.getElementById('studentId').value,
         email: document.getElementById('email').value,
         program: document.getElementById('program').value,
         yearLevel: document.getElementById('yearLevel').value,
-        dateOfBirth: document.getElementById('dateOfBirth').value,
-        gender: document.getElementById('gender').value,
         address: document.getElementById('address').value,
-        phoneNumber: document.getElementById('phoneNumber').value,
-        isActive: document.getElementById('isActive').checked,
-        enrollmentDate: new Date().toISOString().split('T')[0],
-        gpa: (Math.random() * (4.0 - 2.5) + 2.5).toFixed(2) // Random GPA between 2.5 and 4.0
+        contact: document.getElementById('phoneNumber').value
     };
-    
-    // Check if student ID already exists
-    if (students.some(s => s.studentId === newStudent.studentId)) {
-        showNotification('Student ID already exists!', 'error');
+
+    try {
+        const formData = new FormData();
+        formData.append('action', 'create');
+        formData.append('firstName', newStudent.firstName);
+        formData.append('lastName', newStudent.lastName);
+        formData.append('course', newStudent.program);
+        formData.append('yearLevel', newStudent.yearLevel);
+        formData.append('email', newStudent.email);
+        formData.append('contact', newStudent.contact);
+        formData.append('address', newStudent.address);
+        const res = await fetch('students_api.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Create failed');
+    } catch (err) {
+        showNotification(err.message, 'error');
         return;
     }
-    
-    students.unshift(newStudent);
-    saveToLocalStorage();
-    
+
     const modal = bootstrap.Modal.getInstance(document.getElementById('addStudentModal'));
     modal.hide();
-    
     currentPage = 1;
-    loadStudents();
-    updateStats();
-    
+    fetchStudents();
     addRecentActivity(`New student added: ${newStudent.firstName} ${newStudent.lastName}`);
     showNotification('Student added successfully!', 'success');
 }
@@ -418,7 +318,7 @@ function editStudent(id) {
 }
 
 // Update student
-function updateStudent() {
+async function updateStudent() {
     const form = document.getElementById('editStudentForm');
     if (!form.checkValidity()) {
         form.classList.add('was-validated');
@@ -426,12 +326,7 @@ function updateStudent() {
     }
     
     const id = parseInt(document.getElementById('editStudentId').value);
-    const studentIndex = students.findIndex(s => s.id === id);
-    
-    if (studentIndex === -1) return;
-    
     const updatedStudent = {
-        ...students[studentIndex],
         firstName: document.getElementById('editFirstName').value,
         lastName: document.getElementById('editLastName').value,
         studentId: document.getElementById('editStudentId').value,
@@ -444,22 +339,34 @@ function updateStudent() {
         phoneNumber: document.getElementById('editPhoneNumber').value,
         isActive: document.getElementById('editIsActive').checked
     };
-    
-    // Check if student ID already exists (excluding current student)
-    if (students.some(s => s.studentId === updatedStudent.studentId && s.id !== id)) {
-        showNotification('Student ID already exists!', 'error');
+
+    try {
+        const formData = new FormData();
+        formData.append('action', 'update');
+        formData.append('id', id);
+        formData.append('firstName', updatedStudent.firstName);
+        formData.append('lastName', updatedStudent.lastName);
+        formData.append('course', updatedStudent.program);
+        formData.append('yearLevel', updatedStudent.yearLevel);
+        formData.append('email', updatedStudent.email);
+        formData.append('contact', updatedStudent.phoneNumber);
+        formData.append('address', updatedStudent.address);
+
+        const res = await fetch('students_api.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Update failed');
+    } catch (err) {
+        showNotification(err.message, 'error');
         return;
     }
-    
-    students[studentIndex] = updatedStudent;
-    saveToLocalStorage();
-    
+
     const modal = bootstrap.Modal.getInstance(document.getElementById('editStudentModal'));
     modal.hide();
-    
-    loadStudents();
-    updateStats();
-    
+    fetchStudents();
     addRecentActivity(`Student updated: ${updatedStudent.firstName} ${updatedStudent.lastName}`);
     showNotification('Student updated successfully!', 'success');
 }
@@ -549,27 +456,39 @@ function confirmDeleteStudent(id) {
 }
 
 // Delete student
-function deleteStudent() {
+async function deleteStudent() {
     const studentIndex = students.findIndex(s => s.id === currentStudentId);
     
     if (studentIndex === -1) return;
     
     const deletedStudent = students[studentIndex];
-    students.splice(studentIndex, 1);
-    saveToLocalStorage();
-    
+
+    try {
+        const formData = new FormData();
+        formData.append('action', 'delete');
+        formData.append('id', currentStudentId);
+        const res = await fetch('students_api.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Delete failed');
+    } catch (err) {
+        showNotification(err.message, 'error');
+        return;
+    }
+
     const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
     modal.hide();
-    
+
     // Reset page if needed
     const totalPages = Math.ceil(students.length / itemsPerPage);
     if (currentPage > totalPages) {
         currentPage = Math.max(1, totalPages);
     }
-    
-    loadStudents();
-    updateStats();
-    
+
+    fetchStudents();
     addRecentActivity(`Student deleted: ${deletedStudent.firstName} ${deletedStudent.lastName}`);
     showNotification('Student deleted successfully!', 'success');
     
@@ -611,16 +530,6 @@ function exportData() {
     window.URL.revokeObjectURL(url);
     
     showNotification('Data exported successfully!', 'success');
-}
-
-// Save to localStorage
-function saveToLocalStorage() {
-    try {
-        localStorage.setItem('students', JSON.stringify(students));
-    } catch (error) {
-        console.error('Error saving to localStorage:', error);
-        showNotification('Error saving data to local storage', 'error');
-    }
 }
 
 // Add recent activity

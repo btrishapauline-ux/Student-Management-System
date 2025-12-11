@@ -107,14 +107,16 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
         submitBtn.disabled = true;
         
-        // Simulate API call delay
+        // Simulate API call delay then submit the form to the server
         setTimeout(() => {
-            showSuccessMessage();
-            
-            // Reset button
+            // Programmatically submit the form so server-side PHP handles authentication
+            adminLoginForm.submit();
+            // Note: if you prefer client-side redirect instead, replace the line above with:
+            // window.location.href = 'admin.php';
+            // Reset button (in case submission is blocked or fails)
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
-        }, 2000);
+        }, 1000);
     }
     
     function showSuccessMessage() {
