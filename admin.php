@@ -81,8 +81,8 @@ if (isset($conn) && $conn->connect_error) {
 
             <nav id="navmenu" class="navmenu">
                 <ul>
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="student-profile.html">Profile</a></li>
+                    <li><a href="index.php">Home</a></li>
+                    <li><a href="student-profile.php">Profile</a></li>
                     <li><a href="student-courses.html">Courses</a></li>
                     <li><a href="student-grades.html">Grades</a></li>
                     <li><a href="student-schedule.html">Schedule</a></li>
@@ -465,8 +465,26 @@ if (isset($conn) && $conn->connect_error) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="editStudentForm">
-                        <input type="hidden" id="editStudentId">
+                    <form id="editStudentForm" enctype="multipart/form-data">
+                        <input type="hidden" id="editStudentIdHidden">
+                        <input type="hidden" id="editProfileImageBase64">
+                        
+                        <h6 class="mb-3 text-primary"><i class="bi bi-person"></i> Basic Information</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Student ID *</label>
+                                    <input type="text" class="form-control" id="editStudentId" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Username *</label>
+                                    <input type="text" class="form-control" id="editUsername" required>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -485,30 +503,33 @@ if (isset($conn) && $conn->connect_error) {
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label class="form-label">Student ID *</label>
-                                    <input type="text" class="form-control" id="editStudentId" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
                                     <label class="form-label">Email Address *</label>
                                     <input type="email" class="form-control" id="editEmail" required>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="editPhoneNumber">
+                                </div>
+                            </div>
                         </div>
                         
+                        <h6 class="mb-3 mt-4 text-primary"><i class="bi bi-graduation-cap"></i> Academic Information</h6>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label class="form-label">Program *</label>
+                                    <label class="form-label">Program/Course *</label>
                                     <select class="form-select" id="editProgram" required>
                                         <option value="">Select Program</option>
-                                        <option value="BS Computer Science">BS Computer Science</option>
                                         <option value="BS Information Technology">BS Information Technology</option>
-                                        <option value="BS Information Systems">BS Information Systems</option>
-                                        <option value="BS Computer Engineering">BS Computer Engineering</option>
-                                        <option value="BS Electronics Engineering">BS Electronics Engineering</option>
+                                        <option value="BS Computer Science">BS Computer Science</option>
                                         <option value="BS Electrical Engineering">BS Electrical Engineering</option>
+                                        <option value="BS Mechanical Engineering">BS Mechanical Engineering</option>
+                                        <option value="BS Education">BS Education</option>
+                                        <option value="BS Nursing">BS Nursing</option>
+                                        <option value="BS Business Administration">BS Business Administration</option>
+                                        <option value="BS Accountancy">BS Accountancy</option>
                                     </select>
                                 </div>
                             </div>
@@ -527,6 +548,7 @@ if (isset($conn) && $conn->connect_error) {
                             </div>
                         </div>
                         
+                        <h6 class="mb-3 mt-4 text-primary"><i class="bi bi-person-vcard"></i> Personal Information</h6>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -547,23 +569,90 @@ if (isset($conn) && $conn->connect_error) {
                             </div>
                         </div>
                         
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Nationality</label>
+                                    <input type="text" class="form-control" id="editNationality" placeholder="Filipino">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Marital Status</label>
+                                    <select class="form-select" id="editMaritalStatus">
+                                        <option value="">Select Status</option>
+                                        <option value="Single">Single</option>
+                                        <option value="Married">Married</option>
+                                        <option value="Divorced">Divorced</option>
+                                        <option value="Widowed">Widowed</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Blood Type</label>
+                                    <select class="form-select" id="editBloodType">
+                                        <option value="">Select Blood Type</option>
+                                        <option value="A+">A+</option>
+                                        <option value="A-">A-</option>
+                                        <option value="B+">B+</option>
+                                        <option value="B-">B-</option>
+                                        <option value="AB+">AB+</option>
+                                        <option value="AB-">AB-</option>
+                                        <option value="O+">O+</option>
+                                        <option value="O-">O-</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="mb-3">
                             <label class="form-label">Address</label>
                             <textarea class="form-control" id="editAddress" rows="2"></textarea>
                         </div>
                         
-                        <div class="mb-3">
-                            <label class="form-label">Phone Number</label>
-                            <input type="tel" class="form-control" id="editPhoneNumber">
+                        <h6 class="mb-3 mt-4 text-primary"><i class="bi bi-person-exclamation"></i> Emergency Contact</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Contact Person</label>
+                                    <input type="text" class="form-control" id="editEmergencyContactName">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Relationship</label>
+                                    <select class="form-select" id="editEmergencyContactRelationship">
+                                        <option value="">Select Relationship</option>
+                                        <option value="Father">Father</option>
+                                        <option value="Mother">Mother</option>
+                                        <option value="Guardian">Guardian</option>
+                                        <option value="Spouse">Spouse</option>
+                                        <option value="Sibling">Sibling</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="editEmergencyContactPhone">
+                                </div>
+                            </div>
                         </div>
                         
+                        <h6 class="mb-3 mt-4 text-primary"><i class="bi bi-image"></i> Profile Image</h6>
                         <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="editIsActive">
-                                <label class="form-check-label" for="editIsActive">
-                                    Active Student
-                                </label>
+                            <div class="text-center mb-3">
+                                <img id="editProfileImagePreview" src="assets/img/student-avatar.jpg" 
+                                     alt="Profile Preview" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 3px solid #dee2e6;">
                             </div>
+                            <label class="form-label">Upload New Profile Image</label>
+                            <input type="file" class="form-control" id="editProfileImage" accept="image/jpeg,image/jpg,image/png,image/gif">
+                            <small class="text-muted">Accepted formats: JPG, PNG, GIF (Max 5MB)</small>
                         </div>
                     </form>
                 </div>
@@ -622,5 +711,19 @@ if (isset($conn) && $conn->connect_error) {
     <script src="assets/vendor/aos/aos.js"></script>
     
     <script src="assets/js/admin.js"></script>
+    
+    <script>
+        // Profile image preview in edit modal
+        document.getElementById('editProfileImage')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('editProfileImagePreview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
 </body>
 </html>

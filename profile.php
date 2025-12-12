@@ -1,3 +1,126 @@
+<?php
+// Basic session + DB setup
+session_start();
+require_once('db.php');
+
+// Redirect if not logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'student') {
+    header('Location: login.php');
+    exit();
+}
+
+$studentId = (int)$_SESSION['user_id'];
+
+// Initialize $fullName early to avoid undefined variable warning
+$fullName = 'Student';
+
+// Handle profile image upload
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_image'])) {
+    // Check if profile_image column exists
+    $checkColumnSql = "SHOW COLUMNS FROM students LIKE 'profile_image'";
+    $checkResult = $conn->query($checkColumnSql);
+    $columnExists = ($checkResult && $checkResult->num_rows > 0);
+    
+    if ($columnExists && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        $fileType = $_FILES['profile_image']['type'];
+        
+        if (in_array($fileType, $allowedTypes)) {
+            // Read image file and convert to base64
+            $imageData = file_get_contents($_FILES['profile_image']['tmp_name']);
+            $imageBase64 = base64_encode($imageData);
+            
+            // Update database with base64 encoded image
+            $updateSql = "UPDATE students SET profile_image = ? WHERE student_id = ?";
+            $updateStmt = $conn->prepare($updateSql);
+            $updateStmt->bind_param('si', $imageBase64, $studentId);
+            $updateStmt->execute();
+            $updateStmt->close();
+        }
+    }
+}
+
+// Load current student info
+$student = [
+    'firstname' => '',
+    'lastname' => '',
+    'username' => '',
+    'email' => '',
+    'course' => '',
+    'year_level' => '',
+    'contact' => '',
+    'address' => '',
+    'profile_image' => ''
+];
+
+// Check if profile_image column exists
+$checkColumnSql = "SHOW COLUMNS FROM students LIKE 'profile_image'";
+$columnExists = false;
+$checkResult = $conn->query($checkColumnSql);
+if ($checkResult && $checkResult->num_rows > 0) {
+    $columnExists = true;
+}
+
+// Build SQL query - conditionally include profile_image if column exists
+if ($columnExists) {
+    $sql = "SELECT s.firstname, s.lastname, s.course, s.year_level, s.email, s.contact, s.address,
+                   s.date_of_birth, s.gender, s.nationality, s.marital_status, s.blood_type,
+                   s.emergency_contact_name, s.emergency_contact_relationship, s.emergency_contact_phone,
+                   s.profile_image,
+                   sl.username, sl.student_email
+            FROM students s
+            JOIN student_login sl ON sl.student_id = s.student_id
+            WHERE s.student_id = ?";
+} else {
+    $sql = "SELECT s.firstname, s.lastname, s.course, s.year_level, s.email, s.contact, s.address,
+                   s.date_of_birth, s.gender, s.nationality, s.marital_status, s.blood_type,
+                   s.emergency_contact_name, s.emergency_contact_relationship, s.emergency_contact_phone,
+                   sl.username, sl.student_email
+            FROM students s
+            JOIN student_login sl ON sl.student_id = s.student_id
+            WHERE s.student_id = ?";
+}
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param('i', $studentId);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($row = $result->fetch_assoc()) {
+    $student['firstname'] = $row['firstname'];
+    $student['lastname'] = $row['lastname'];
+    $student['username'] = $row['username'];
+    $student['email'] = $row['student_email'];
+    $student['course'] = $row['course'];
+    $student['year_level'] = $row['year_level'];
+    $student['contact'] = $row['contact'] ?? '';
+    $student['address'] = $row['address'] ?? '';
+    $student['date_of_birth'] = $row['date_of_birth'] ?? '';
+    $student['gender'] = $row['gender'] ?? '';
+    $student['nationality'] = $row['nationality'] ?? '';
+    $student['marital_status'] = $row['marital_status'] ?? '';
+    $student['blood_type'] = $row['blood_type'] ?? '';
+    $student['emergency_contact_name'] = $row['emergency_contact_name'] ?? '';
+    $student['emergency_contact_relationship'] = $row['emergency_contact_relationship'] ?? '';
+    $student['emergency_contact_phone'] = $row['emergency_contact_phone'] ?? '';
+    $student['profile_image'] = ($columnExists && isset($row['profile_image'])) ? $row['profile_image'] : '';
+    
+    // Set fullName after loading data
+    $fullName = htmlspecialchars(trim($student['firstname'] . ' ' . $student['lastname']));
+    if (empty(trim($fullName))) {
+        $fullName = 'Student';
+    }
+}
+$stmt->close();
+
+// Helper function to get profile image src
+function getProfileImageSrc($profileImage) {
+    if (!empty($profileImage)) {
+        return 'data:image/jpeg;base64,' . $profileImage;
+    }
+    return 'assets/img/student-avatar.jpg';
+}
+$profileImageSrc = getProfileImageSrc($student['profile_image']);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,10 +182,10 @@
       <div class="profile-dropdown">
         <div class="profile-trigger" id="profileTrigger">
           <div class="profile-avatar">
-            <img src="assets/img/student-avatar.jpg" alt="Student Avatar" id="profileAvatar">
+            <img src="<?php echo htmlspecialchars($profileImageSrc); ?>" alt="Student Avatar" id="profileAvatar">
           </div>
           <div class="profile-info">
-            <span class="profile-name" id="profileName">Juan Dela Cruz</span>
+            <span class="profile-name" id="profileName"><?php echo $fullName ?: 'Student'; ?></span>
             <span class="profile-role">Student</span>
           </div>
           <i class="bi bi-chevron-down"></i>
@@ -70,10 +193,10 @@
         
         <div class="profile-dropdown-menu" id="profileDropdown">
           <div class="dropdown-header">
-            <img src="assets/img/student-avatar.jpg" alt="Student Avatar" id="dropdownAvatar">
+            <img src="<?php echo htmlspecialchars($profileImageSrc); ?>" alt="Student Avatar" id="dropdownAvatar">
             <div>
-              <h6 id="dropdownName">Juan Dela Cruz</h6>
-              <span>BS Computer Science</span>
+              <h6 id="dropdownName"><?php echo $fullName ?: 'Student'; ?></h6>
+              <span><?php echo htmlspecialchars($student['course']); ?></span>
             </div>
           </div>
           <div class="dropdown-divider"></div>
@@ -98,6 +221,20 @@
     <!-- Profile Content Section -->
     <section class="profile-content section">
       <div class="container">
+        <?php $fullName = htmlspecialchars(trim($student['firstname'] . ' ' . $student['lastname'])); ?>
+
+        <!-- Profile Completion Notice -->
+        <?php if (!$student['date_of_birth'] && !$student['gender'] && !$student['emergency_contact_name']): ?>
+        <div class="alert alert-info mb-4 d-flex align-items-center justify-content-between">
+          <div>
+            <i class="bi bi-info-circle"></i> <strong>Complete Your Profile</strong>
+            <p class="mb-0 mt-1">Please complete your profile information to access all features.</p>
+          </div>
+          <a href="setprofile.php" class="btn btn-primary">
+            <i class="bi bi-person-check"></i> Complete Profile
+          </a>
+        </div>
+        <?php endif; ?>
         
         <!-- Profile Header Card -->
         <div class="profile-header-card">
@@ -105,7 +242,7 @@
             <!-- Circular Avatar Container -->
             <div class="profile-avatar-container">
               <div class="avatar-wrapper">
-                <img src="assets/img/student-avatar.jpg" alt="Juan Dela Cruz" class="profile-main-avatar" id="mainProfileAvatar">
+                <img src="<?php echo htmlspecialchars($profileImageSrc); ?>" alt="<?php echo htmlspecialchars($fullName); ?>" class="profile-main-avatar" id="mainProfileAvatar">
                 <button class="avatar-upload-btn" id="changeAvatarBtn" title="Change Profile Picture">
                   <i class="bi bi-camera"></i>
                 </button>
@@ -114,11 +251,11 @@
             
             <!-- Profile Info -->
             <div class="profile-info-main">
-              <h1 class="student-name" id="mainProfileName">Juan Dela Cruz</h1>
-              <p class="student-id">Student ID: 2023-00123</p>
+              <h1 class="student-name" id="mainProfileName"><?php echo $fullName ?: 'Student'; ?></h1>
+              <p class="student-id">Student ID: <?php echo htmlspecialchars($student['username']); ?></p>
               <div class="program-badges">
-                <span class="program-badge">BS Computer Science</span>
-                <span class="year-badge">3rd Year</span>
+                <span class="program-badge"><?php echo htmlspecialchars($student['course']); ?></span>
+                <span class="year-badge"><?php echo htmlspecialchars($student['year_level']); ?></span>
               </div>
             </div>
           </div>
@@ -176,19 +313,19 @@
                     <h5>Personal Information</h5>
                     <div class="info-item">
                       <label>FULL NAME</label>
-                      <p id="infoFullName">Juan Dela Cruz</p>
+                      <p id="infoFullName"><?php echo $fullName ?: 'Student'; ?></p>
                     </div>
                     <div class="info-item">
                       <label>DATE OF BIRTH</label>
-                      <p id="infoDob">May 15, 2002</p>
+                      <p id="infoDob"><?php echo $student['date_of_birth'] ? date('F d, Y', strtotime($student['date_of_birth'])) : '—'; ?></p>
                     </div>
                     <div class="info-item">
                       <label>GENDER</label>
-                      <p id="infoGender">Male</p>
+                      <p id="infoGender"><?php echo htmlspecialchars($student['gender'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
                       <label>ADDRESS</label>
-                      <p id="infoAddress">123 University Ave, Legazpi City, Albay, Philippines</p>
+                      <p id="infoAddress"><?php echo htmlspecialchars($student['address'] ?: '—'); ?></p>
                     </div>
                   </div>
                   
@@ -196,19 +333,35 @@
                     <h5>Additional Details</h5>
                     <div class="info-item">
                       <label>NATIONALITY</label>
-                      <p id="infoNationality">Filipino</p>
+                      <p id="infoNationality"><?php echo htmlspecialchars($student['nationality'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
                       <label>MARITAL STATUS</label>
-                      <p id="infoMaritalStatus">Single</p>
+                      <p id="infoMaritalStatus"><?php echo htmlspecialchars($student['marital_status'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
                       <label>BLOOD TYPE</label>
-                      <p id="infoBloodType">O+</p>
+                      <p id="infoBloodType"><?php echo htmlspecialchars($student['blood_type'] ?: '—'); ?></p>
                     </div>
-                    <button class="btn btn-primary btn-sm mt-3" id="editPersonalBtn">
+                    <div class="info-item">
+                      <label>EMERGENCY CONTACT</label>
+                      <p id="infoEmergencyContact">
+                        <?php if ($student['emergency_contact_name']): ?>
+                          <?php echo htmlspecialchars($student['emergency_contact_name']); ?>
+                          <?php if ($student['emergency_contact_relationship']): ?>
+                            <br><small class="text-muted">(<?php echo htmlspecialchars($student['emergency_contact_relationship']); ?>)</small>
+                          <?php endif; ?>
+                          <?php if ($student['emergency_contact_phone']): ?>
+                            <br><small class="text-muted"><?php echo htmlspecialchars($student['emergency_contact_phone']); ?></small>
+                          <?php endif; ?>
+                        <?php else: ?>
+                          —
+                        <?php endif; ?>
+                      </p>
+                    </div>
+                    <a href="setprofile.php" class="btn btn-primary btn-sm mt-3">
                       <i class="bi bi-pencil"></i> Edit Information
-                    </button>
+                    </a>
                   </div>
                 </div>
                 
@@ -256,15 +409,15 @@
                     <h5>Academic Information</h5>
                     <div class="info-item">
                       <label>STUDENT ID</label>
-                      <p>2023-00123</p>
+                      <p><?php echo htmlspecialchars($student['username']); ?></p>
                     </div>
                     <div class="info-item">
                       <label>PROGRAM</label>
-                      <p>BS Computer Science</p>
+                      <p><?php echo htmlspecialchars($student['course']); ?></p>
                     </div>
                     <div class="info-item">
                       <label>YEAR LEVEL</label>
-                      <p>3rd Year</p>
+                      <p><?php echo htmlspecialchars($student['year_level']); ?></p>
                     </div>
                     <div class="info-item">
                       <label>COLLEGE</label>
@@ -301,11 +454,11 @@
                     <h5>Contact Information</h5>
                     <div class="info-item">
                       <label>EMAIL ADDRESS</label>
-                      <p id="infoEmail">juan.delacruz@bicol-u.edu.ph</p>
+                      <p id="infoEmail"><?php echo htmlspecialchars($student['email']); ?></p>
                     </div>
                     <div class="info-item">
                       <label>PHONE NUMBER</label>
-                      <p id="infoPhone">+63 912 345 6789</p>
+                      <p id="infoPhone"><?php echo htmlspecialchars($student['contact'] ?: '—'); ?></p>
                     </div>
                   </div>
                   
@@ -313,19 +466,19 @@
                     <h5>Emergency Contact</h5>
                     <div class="info-item">
                       <label>CONTACT PERSON</label>
-                      <p id="infoEmergencyContact">Maria Dela Cruz</p>
+                      <p id="infoEmergencyContact"><?php echo htmlspecialchars($student['emergency_contact_name'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
                       <label>RELATIONSHIP</label>
-                      <p>Mother</p>
+                      <p><?php echo htmlspecialchars($student['emergency_contact_relationship'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
                       <label>PHONE NUMBER</label>
-                      <p id="infoEmergencyPhone">+63 923 456 7890</p>
+                      <p id="infoEmergencyPhone"><?php echo htmlspecialchars($student['emergency_contact_phone'] ?: '—'); ?></p>
                     </div>
-                    <button class="btn btn-primary btn-sm mt-3" id="editContactBtn">
+                    <a href="setprofile.php" class="btn btn-primary btn-sm mt-3">
                       <i class="bi bi-pencil"></i> Edit Contact
-                    </button>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -510,36 +663,47 @@
           <h5 class="modal-title">Change Profile Picture</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body">
-          <div class="avatar-preview text-center mb-4">
-            <div class="avatar-preview-container">
-              <img src="assets/img/student-avatar.jpg" alt="Preview" id="avatarPreview">
-            </div>
-            <small class="text-muted">Preview of your new profile picture</small>
-          </div>
-          
-          <div class="upload-options">
-            <div class="upload-option">
-              <input type="file" id="avatarFileInput" accept="image/*" hidden>
-              <label for="avatarFileInput" class="upload-btn">
-                <i class="bi bi-upload"></i> Upload New Photo
-              </label>
+        <form method="POST" enctype="multipart/form-data" id="avatarUploadForm">
+          <div class="modal-body">
+            <div class="avatar-preview text-center mb-4">
+              <div class="avatar-preview-container">
+                <img src="<?php echo htmlspecialchars($profileImageSrc); ?>" alt="Preview" id="avatarPreview" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover;">
+              </div>
+              <small class="text-muted">Preview of your profile picture</small>
             </div>
             
-            <div class="upload-option">
-              <button class="default-btn" id="useDefaultBtn">
-                <i class="bi bi-person-circle"></i> Use Default Avatar
-              </button>
+            <div class="upload-options">
+              <div class="upload-option">
+                <input type="file" name="profile_image" id="avatarFileInput" accept="image/jpeg,image/jpg,image/png,image/gif" required>
+                <label for="avatarFileInput" class="btn btn-outline-primary w-100">
+                  <i class="bi bi-upload"></i> Choose Photo
+                </label>
+                <small class="text-muted d-block mt-2">Accepted formats: JPG, PNG, GIF (Max 5MB)</small>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="saveAvatarBtn" disabled>Save Changes</button>
-        </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
+  
+  <script>
+    // Preview image before upload
+    document.getElementById('avatarFileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('avatarPreview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  </script>
 
   <!-- Edit Info Modal -->
   <div class="modal fade" id="editInfoModal" tabindex="-1">

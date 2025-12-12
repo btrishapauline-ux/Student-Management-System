@@ -40,9 +40,15 @@ async function fetchStudents(searchTerm = '') {
     const emptyState = document.getElementById('emptyState');
     const paginationContainer = document.getElementById('paginationContainer');
 
-    loadingState.classList.add('active');
+    if (loadingState) {
+        loadingState.classList.remove('d-none');
+        loadingState.style.display = 'block';
+    }
     tableBody.innerHTML = '';
-    emptyState.classList.remove('active');
+    if (emptyState) {
+        emptyState.classList.add('d-none');
+        emptyState.style.display = 'none';
+    }
 
     const url = searchTerm
         ? `students_api.php?action=search&q=${encodeURIComponent(searchTerm)}`
@@ -50,27 +56,59 @@ async function fetchStudents(searchTerm = '') {
 
     try {
         const res = await fetch(url, { credentials: 'same-origin' });
+        
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        
         const data = await res.json();
-        if (!data.success) throw new Error(data.message || 'Failed to load students');
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load students');
+        }
+        
         students = Array.isArray(data.data) ? data.data : [];
+        
+        console.log(`Loaded ${students.length} students${searchTerm ? ' (search: ' + searchTerm + ')' : ''}`);
     } catch (err) {
-        console.error(err);
-        showNotification('Error loading students', 'error');
-        loadingState.classList.remove('active');
-        emptyState.classList.add('active');
-        paginationContainer.classList.add('d-none');
+        console.error('Error fetching students:', err);
+        console.error('URL:', url);
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading students: ' + err.message, 'error');
+        } else {
+            alert('Error loading students: ' + err.message);
+        }
+        if (loadingState) {
+            loadingState.classList.add('d-none');
+            loadingState.style.display = 'none';
+        }
+        if (emptyState) {
+            emptyState.classList.remove('d-none');
+            emptyState.style.display = 'block';
+        }
+        if (paginationContainer) paginationContainer.classList.add('d-none');
         return;
     }
 
-    loadingState.classList.remove('active');
+    if (loadingState) {
+        loadingState.classList.add('d-none');
+        loadingState.style.display = 'none';
+    }
 
     if (students.length === 0) {
-        emptyState.classList.add('active');
-        paginationContainer.classList.add('d-none');
+        if (emptyState) {
+            emptyState.classList.remove('d-none');
+            emptyState.style.display = 'block';
+        }
+        if (paginationContainer) paginationContainer.classList.add('d-none');
         return;
     }
 
-    paginationContainer.classList.remove('d-none');
+    if (emptyState) {
+        emptyState.classList.add('d-none');
+        emptyState.style.display = 'none';
+    }
+    if (paginationContainer) paginationContainer.classList.remove('d-none');
 
     const totalPages = Math.ceil(students.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -151,7 +189,7 @@ function generatePagination(totalPages) {
 function changePage(page) {
     currentPage = page;
     const searchInput = document.getElementById('searchInput');
-    loadStudents(searchInput.value);
+    fetchStudents(searchInput ? searchInput.value : '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -296,25 +334,55 @@ async function saveStudent() {
 }
 
 // Edit student
-function editStudent(id) {
-    const student = students.find(s => s.id === id);
-    if (!student) return;
+async function editStudent(id) {
+    currentStudentId = id;
     
-    document.getElementById('editStudentId').value = student.id;
-    document.getElementById('editFirstName').value = student.firstName;
-    document.getElementById('editLastName').value = student.lastName;
-    document.getElementById('editStudentId').value = student.studentId;
-    document.getElementById('editEmail').value = student.email;
-    document.getElementById('editProgram').value = student.program;
-    document.getElementById('editYearLevel').value = student.yearLevel;
-    document.getElementById('editDateOfBirth').value = student.dateOfBirth;
-    document.getElementById('editGender').value = student.gender;
-    document.getElementById('editAddress').value = student.address;
-    document.getElementById('editPhoneNumber').value = student.phoneNumber;
-    document.getElementById('editIsActive').checked = student.isActive;
-    
-    const modal = new bootstrap.Modal(document.getElementById('editStudentModal'));
-    modal.show();
+    try {
+        const res = await fetch(`students_api.php?action=view&id=${id}`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load student details');
+        
+        const student = data.data;
+        const profileImageSrc = student.profileImage || student.profile_image ? 
+            `data:image/jpeg;base64,${student.profileImage || student.profile_image}` : 
+            'assets/img/student-avatar.jpg';
+        
+        // Populate all form fields
+        document.getElementById('editStudentIdHidden').value = student.id || student.studentId;
+        document.getElementById('editStudentId').value = student.studentId || student.id;
+        document.getElementById('editUsername').value = student.username || '';
+        document.getElementById('editFirstName').value = student.firstName || '';
+        document.getElementById('editLastName').value = student.lastName || '';
+        document.getElementById('editEmail').value = student.email || '';
+        document.getElementById('editPhoneNumber').value = student.contact || '';
+        document.getElementById('editProgram').value = student.course || student.program || '';
+        document.getElementById('editYearLevel').value = student.yearLevel || student.year_level || '';
+        document.getElementById('editDateOfBirth').value = student.dateOfBirth || student.date_of_birth || '';
+        document.getElementById('editGender').value = student.gender || '';
+        document.getElementById('editNationality').value = student.nationality || '';
+        document.getElementById('editMaritalStatus').value = student.maritalStatus || student.marital_status || '';
+        document.getElementById('editBloodType').value = student.bloodType || student.blood_type || '';
+        document.getElementById('editAddress').value = student.address || '';
+        document.getElementById('editEmergencyContactName').value = student.emergencyContactName || student.emergency_contact_name || '';
+        document.getElementById('editEmergencyContactRelationship').value = student.emergencyContactRelationship || student.emergency_contact_relationship || '';
+        document.getElementById('editEmergencyContactPhone').value = student.emergencyContactPhone || student.emergency_contact_phone || '';
+        
+        // Set profile image preview and base64
+        document.getElementById('editProfileImagePreview').src = profileImageSrc;
+        if (student.profileImage || student.profile_image) {
+            document.getElementById('editProfileImageBase64').value = student.profileImage || student.profile_image;
+        }
+        
+        const modal = new bootstrap.Modal(document.getElementById('editStudentModal'));
+        modal.show();
+    } catch (err) {
+        console.error('Error loading student for edit:', err);
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading student: ' + err.message, 'error');
+        } else {
+            alert('Error loading student: ' + err.message);
+        }
+    }
 }
 
 // Update student
@@ -325,32 +393,40 @@ async function updateStudent() {
         return;
     }
     
-    const id = parseInt(document.getElementById('editStudentId').value);
-    const updatedStudent = {
-        firstName: document.getElementById('editFirstName').value,
-        lastName: document.getElementById('editLastName').value,
-        studentId: document.getElementById('editStudentId').value,
-        email: document.getElementById('editEmail').value,
-        program: document.getElementById('editProgram').value,
-        yearLevel: document.getElementById('editYearLevel').value,
-        dateOfBirth: document.getElementById('editDateOfBirth').value,
-        gender: document.getElementById('editGender').value,
-        address: document.getElementById('editAddress').value,
-        phoneNumber: document.getElementById('editPhoneNumber').value,
-        isActive: document.getElementById('editIsActive').checked
-    };
-
+    const id = parseInt(document.getElementById('editStudentIdHidden').value);
+    
     try {
         const formData = new FormData();
         formData.append('action', 'update');
         formData.append('id', id);
-        formData.append('firstName', updatedStudent.firstName);
-        formData.append('lastName', updatedStudent.lastName);
-        formData.append('course', updatedStudent.program);
-        formData.append('yearLevel', updatedStudent.yearLevel);
-        formData.append('email', updatedStudent.email);
-        formData.append('contact', updatedStudent.phoneNumber);
-        formData.append('address', updatedStudent.address);
+        formData.append('firstName', document.getElementById('editFirstName').value);
+        formData.append('lastName', document.getElementById('editLastName').value);
+        formData.append('username', document.getElementById('editUsername').value);
+        formData.append('course', document.getElementById('editProgram').value);
+        formData.append('yearLevel', document.getElementById('editYearLevel').value);
+        formData.append('email', document.getElementById('editEmail').value);
+        formData.append('contact', document.getElementById('editPhoneNumber').value);
+        formData.append('address', document.getElementById('editAddress').value);
+        formData.append('dateOfBirth', document.getElementById('editDateOfBirth').value);
+        formData.append('gender', document.getElementById('editGender').value);
+        formData.append('nationality', document.getElementById('editNationality').value);
+        formData.append('maritalStatus', document.getElementById('editMaritalStatus').value);
+        formData.append('bloodType', document.getElementById('editBloodType').value);
+        formData.append('emergencyContactName', document.getElementById('editEmergencyContactName').value);
+        formData.append('emergencyContactRelationship', document.getElementById('editEmergencyContactRelationship').value);
+        formData.append('emergencyContactPhone', document.getElementById('editEmergencyContactPhone').value);
+        
+        // Handle profile image
+        const profileImageFile = document.getElementById('editProfileImage').files[0];
+        if (profileImageFile) {
+            formData.append('profileImage', profileImageFile);
+        } else {
+            // If no new file, send existing base64 if available
+            const existingImage = document.getElementById('editProfileImageBase64').value;
+            if (existingImage) {
+                formData.append('profileImageBase64', existingImage);
+            }
+        }
 
         const res = await fetch('students_api.php', {
             method: 'POST',
@@ -359,81 +435,151 @@ async function updateStudent() {
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.message || 'Update failed');
+        
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editStudentModal'));
+        modal.hide();
+        fetchStudents();
+        const firstName = document.getElementById('editFirstName').value;
+        const lastName = document.getElementById('editLastName').value;
+        if (typeof addRecentActivity === 'function') {
+            addRecentActivity(`Student updated: ${firstName} ${lastName}`);
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('Student updated successfully!', 'success');
+        } else {
+            alert('Student updated successfully!');
+        }
     } catch (err) {
-        showNotification(err.message, 'error');
-        return;
+        console.error('Update error:', err);
+        if (typeof showNotification === 'function') {
+            showNotification(err.message, 'error');
+        } else {
+            alert('Error: ' + err.message);
+        }
     }
-
-    const modal = bootstrap.Modal.getInstance(document.getElementById('editStudentModal'));
-    modal.hide();
-    fetchStudents();
-    addRecentActivity(`Student updated: ${updatedStudent.firstName} ${updatedStudent.lastName}`);
-    showNotification('Student updated successfully!', 'success');
 }
 
 // View student details
-function viewStudent(id) {
-    const student = students.find(s => s.id === id);
-    if (!student) return;
-    
+async function viewStudent(id) {
     currentStudentId = id;
     
-    const studentDetails = document.getElementById('studentDetails');
-    studentDetails.innerHTML = `
-        <div class="detail-item">
-            <span class="detail-label">Full Name</span>
-            <div class="detail-value">${student.firstName} ${student.lastName}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Student ID</span>
-            <div class="detail-value">${student.studentId}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Email</span>
-            <div class="detail-value">${student.email}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Program</span>
-            <div class="detail-value">${student.program}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Year Level</span>
-            <div class="detail-value">${student.yearLevel}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Date of Birth</span>
-            <div class="detail-value">${formatDate(student.dateOfBirth)}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Gender</span>
-            <div class="detail-value">${student.gender}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Phone Number</span>
-            <div class="detail-value">${student.phoneNumber}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Address</span>
-            <div class="detail-value">${student.address}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Enrollment Date</span>
-            <div class="detail-value">${formatDate(student.enrollmentDate)}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Current GPA</span>
-            <div class="detail-value">${student.gpa}</div>
-        </div>
-        <div class="detail-item">
-            <span class="detail-label">Status</span>
-            <div class="detail-value status ${student.isActive ? 'status-active' : 'status-inactive'}">
-                ${student.isActive ? 'Active' : 'Inactive'}
+    try {
+        const res = await fetch(`students_api.php?action=view&id=${id}`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load student details');
+        
+        const student = data.data;
+        const profileImageSrc = student.profileImage ? 
+            `data:image/jpeg;base64,${student.profileImage}` : 
+            'assets/img/student-avatar.jpg';
+        
+        const studentDetails = document.getElementById('studentDetails');
+        studentDetails.innerHTML = `
+            <div class="row">
+                <div class="col-md-4 text-center mb-4">
+                    <img src="${profileImageSrc}" alt="Profile" 
+                         style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 4px solid #667eea;">
+                </div>
+                <div class="col-md-8">
+                    <h4 class="mb-3">${student.firstName} ${student.lastName}</h4>
+                    <p class="text-muted">Student ID: ${student.studentId}</p>
+                </div>
             </div>
-        </div>
-    `;
-    
-    const modal = new bootstrap.Modal(document.getElementById('viewStudentModal'));
-    modal.show();
+            
+            <hr>
+            
+            <h6 class="mb-3 text-primary"><i class="bi bi-person"></i> Basic Information</h6>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Student ID:</strong> ${student.studentId || '—'}
+                </div>
+                <div class="col-md-6">
+                    <strong>Username:</strong> ${student.username || '—'}
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>First Name:</strong> ${student.firstName || '—'}
+                </div>
+                <div class="col-md-6">
+                    <strong>Last Name:</strong> ${student.lastName || '—'}
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Email:</strong> ${student.email || '—'}
+                </div>
+                <div class="col-md-6">
+                    <strong>Contact:</strong> ${student.contact || '—'}
+                </div>
+            </div>
+            
+            <hr>
+            
+            <h6 class="mb-3 text-primary"><i class="bi bi-graduation-cap"></i> Academic Information</h6>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Course/Program:</strong> ${student.course || student.program || '—'}
+                </div>
+                <div class="col-md-6">
+                    <strong>Year Level:</strong> ${student.yearLevel || student.year_level || '—'}
+                </div>
+            </div>
+            
+            <hr>
+            
+            <h6 class="mb-3 text-primary"><i class="bi bi-person-vcard"></i> Personal Information</h6>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Date of Birth:</strong> ${student.dateOfBirth || student.date_of_birth || '—'}
+                </div>
+                <div class="col-md-6">
+                    <strong>Gender:</strong> ${student.gender || '—'}
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Nationality:</strong> ${student.nationality || '—'}
+                </div>
+                <div class="col-md-6">
+                    <strong>Marital Status:</strong> ${student.maritalStatus || student.marital_status || '—'}
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Blood Type:</strong> ${student.bloodType || student.blood_type || '—'}
+                </div>
+            </div>
+            <div class="mb-3">
+                <strong>Address:</strong> ${student.address || '—'}
+            </div>
+            
+            <hr>
+            
+            <h6 class="mb-3 text-primary"><i class="bi bi-person-exclamation"></i> Emergency Contact</h6>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <strong>Contact Person:</strong> ${student.emergencyContactName || student.emergency_contact_name || '—'}
+                </div>
+                <div class="col-md-4">
+                    <strong>Relationship:</strong> ${student.emergencyContactRelationship || student.emergency_contact_relationship || '—'}
+                </div>
+                <div class="col-md-4">
+                    <strong>Phone Number:</strong> ${student.emergencyContactPhone || student.emergency_contact_phone || '—'}
+                </div>
+            </div>
+        `;
+        
+        const modal = new bootstrap.Modal(document.getElementById('viewStudentModal'));
+        modal.show();
+    } catch (err) {
+        console.error('Error loading student details:', err);
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading student details: ' + err.message, 'error');
+        } else {
+            alert('Error loading student details: ' + err.message);
+        }
+    }
 }
 
 // Confirm delete student

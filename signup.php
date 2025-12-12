@@ -1,220 +1,242 @@
 <?php
 session_start();
-require_once('db.php'); // Include the secure database connection
+require_once('db.php');
+
+// Enable all errors for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // Function to handle redirection and session error logging
 function redirect_with_error($message) {
     $_SESSION['signup_error'] = $message;
-    // FIX: Changed redirect target to match the file name (signup.php)
-    header("location: signup.php"); 
+    header("location: signup.php");
     exit();
 }
 
 // Check if the request is a POST submission
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-// --- 1. Retrieve and Validate Data ---
-$firstname        = trim($_POST['firstname'] ?? '');
-$lastname         = trim($_POST['lastname'] ?? '');
-$student_id_num   = trim($_POST['student_id'] ?? ''); // username for login (string)
-$email            = trim($_POST['email'] ?? '');
-$course           = $_POST['course'] ?? '';
-$year_level       = $_POST['year_level'] ?? '';
-$password         = $_POST['password'] ?? '';
-$confirm_password = $_POST['confirm_password'] ?? '';
-$terms_agreed     = isset($_POST['terms']); 
+    // --- 1. Retrieve and Validate Data ---
+    $firstname        = trim($_POST['firstname'] ?? '');
+    $lastname         = trim($_POST['lastname'] ?? '');
+    $student_id_num   = trim($_POST['student_id'] ?? '');
+    $email            = trim($_POST['email'] ?? '');
+    $course           = $_POST['course'] ?? '';
+    $year_level       = $_POST['year_level'] ?? '';
+    $password         = $_POST['password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
+    $terms_agreed     = isset($_POST['terms']); 
 
-// Allowed values to match ENUMs in DB
-$allowed_courses = [
-    'BS Information Technology',
-    'BS Computer Science',
-    'BS Electrical Engineering',
-    'BS Mechanical Engineering',
-    'BS Education',
-    'BS Nursing',
-    'BS Business Administration',
-    'BS Accountancy'
-];
-$allowed_years = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
+    // Debug: Show what we received
+    echo "<pre>DEBUG - Form Data Received:\n";
+    echo "Firstname: '$firstname'\n";
+    echo "Lastname: '$lastname'\n";
+    echo "Student ID: '$student_id_num'\n";
+    echo "Email: '$email'\n";
+    echo "Course: '$course'\n";
+    echo "Year Level: '$year_level'\n";
+    echo "Password length: " . strlen($password) . "\n";
+    echo "Terms: " . ($terms_agreed ? 'Yes' : 'No') . "\n";
+    echo "</pre>";
 
-// Basic input validation
-if ($firstname === '' || $lastname === '' || $student_id_num === '' || $email === '' || $course === '' || $year_level === '' || $password === '' || $confirm_password === '') {
-    redirect_with_error("All required fields must be filled.");
-}
-if (!in_array($course, $allowed_courses, true)) {
-    redirect_with_error("Invalid course selected.");
-}
-if (!in_array($year_level, $allowed_years, true)) {
-    redirect_with_error("Invalid year level selected.");
-}
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    redirect_with_error("Please enter a valid email address.");
-}
-if ($password !== $confirm_password) {
-    redirect_with_error("Password and Confirm Password do not match.");
-}
-if (!$terms_agreed) {
-    redirect_with_error("You must agree to the Terms of Service.");
-}
-
-// --- 2. Check for Existing User (Security Check) ---
-// Check if username or student_email already exists in student_login
-$check_login_sql = "SELECT 1 FROM student_login WHERE username = ? OR student_email = ? LIMIT 1";
-$stmt = $conn->prepare($check_login_sql);
-if (!$stmt) {
-    redirect_with_error("Server error. Please try again.");
-}
-$stmt->bind_param("ss", $student_id_num, $email);
-$stmt->execute();
-$result = $stmt->get_result();
-if ($result && $result->num_rows > 0) {
-    $stmt->close();
-    redirect_with_error("An account already exists with this Student ID or Email.");
-}
-$stmt->close();
-
-// Check if email already exists in students table (unique constraint)
-$check_student_email = "SELECT 1 FROM students WHERE email = ? LIMIT 1";
-$stmt = $conn->prepare($check_student_email);
-if (!$stmt) {
-    redirect_with_error("Server error. Please try again.");
-}
-$stmt->bind_param("s", $email);
-$stmt->execute();
-$result = $stmt->get_result();
-if ($result && $result->num_rows > 0) {
-    $stmt->close();
-    redirect_with_error("An account already exists with this email.");
-}
-$stmt->close();
-
-// --- 3. Hash the Password (CRITICAL SECURITY STEP) ---
-// Use a secure, slow hashing algorithm (Argon2 or Bcrypt via PASSWORD_DEFAULT)
-$hashed_password = password_hash($password, PASSWORD_DEFAULT);
-if ($hashed_password === false) {
-    // Should almost never happen, but essential error check
-    redirect_with_error("Failed to hash the password. Please try again.");
-}
-
-// --- 4. START TRANSACTION ---
-// Since we are inserting into two tables, we use a transaction to ensure both succeed or both fail.
-$conn->begin_transaction();
-$success = true;
-
-try {
-    // --- STEP A: Insert into `students` table ---
-    // Note: The `added_by` field is nullable, so we omit it for student self-registration
-    $sql_students = "INSERT INTO students (firstname, lastname, email, course, year_level) VALUES (?, ?, ?, ?, ?)";
-    $stmt_students = $conn->prepare($sql_students);
-
-    // Bind parameters (s=string)
-    $stmt_students->bind_param("sssss", $firstname, $lastname, $email, $course, $year_level);
+    // Allowed values to match ENUMs in DB (EXACTLY as in your table)
+    $allowed_courses = [
+        'BS Information Technology',
+        'BS Computer Science',
+        'BS Electrical Engineering', 
+        'BS Mechanical Engineering',
+        'BS Education',
+        'BS Nursing',
+        'BS Business Administration',
+        'BS Accountancy'
+    ];
     
-    if (!$stmt_students->execute()) {
-        throw new Exception("Student record insertion failed: " . $stmt_students->error);
+    $allowed_years = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
+
+    // Basic input validation
+    if ($firstname === '' || $lastname === '' || $student_id_num === '' || $email === '' || $course === '' || $year_level === '' || $password === '' || $confirm_password === '') {
+        redirect_with_error("All required fields must be filled.");
     }
     
-    // Get the ID of the new student record (needed for the next table)
-    $new_student_id = $conn->insert_id;
-    $stmt_students->close();
-
-    // --- STEP B: Insert into `student_login` table ---
-    // The student_id links the login credentials to the student details
-    $sql_login = "INSERT INTO student_login (student_id, username, student_email, course, year_level, password) VALUES (?, ?, ?, ?, ?, ?)";
-    $stmt_login = $conn->prepare($sql_login);
-    
-    // Bind parameters (i=integer, s=string)
-    $stmt_login->bind_param("isssss", $new_student_id, $student_id_num, $email, $course, $year_level, $hashed_password);
-
-    if (!$stmt_login->execute()) {
-        throw new Exception("Student login creation failed: " . $stmt_login->error);
+    // Check if course is valid
+    if (!in_array($course, $allowed_courses, true)) {
+        echo "<pre>DEBUG - Course validation failed.\n";
+        echo "Submitted: '$course'\n";
+        echo "Allowed: " . print_r($allowed_courses, true) . "\n";
+        echo "Match check: " . (in_array($course, $allowed_courses) ? 'Yes' : 'No') . "\n";
+        echo "</pre>";
+        redirect_with_error("Invalid course selected: '$course'");
     }
     
-    $stmt_login->close();
-
-    // If both steps succeeded, commit the transaction
-    $conn->commit();
-
-    // --- 5. SUCCESS: Set Session and Redirect ---
-    $_SESSION['user_id'] = $new_student_id;
-    $_SESSION['user_type'] = 'student';
-    $_SESSION['signup_success'] = "Account successfully created!"; // Optional success message
-
-    // Redirect to the student dashboard
-    header("location: profile.php"); 
-    exit();
-
-} catch (Exception $e) {
-    // An error occurred, rollback all insertions
-    $conn->rollback();
+    if (!in_array($year_level, $allowed_years, true)) {
+        redirect_with_error("Invalid year level selected.");
+    }
     
-    // Log the error (not shown to user) and redirect
-    error_log("Signup Error: " . $e->getMessage());
-    redirect_with_error("Account creation failed due to a server error. Please try again.");
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        redirect_with_error("Please enter a valid email address.");
+    }
+    
+    if ($password !== $confirm_password) {
+        redirect_with_error("Password and Confirm Password do not match.");
+    }
+    
+    if (!$terms_agreed) {
+        redirect_with_error("You must agree to the Terms of Service.");
+    }
+
+    // --- 2. Check for Existing User (Security Check) ---
+    $check_login_sql = "SELECT 1 FROM student_login WHERE username = ? OR student_email = ? LIMIT 1";
+    $stmt = $conn->prepare($check_login_sql);
+    if (!$stmt) {
+        redirect_with_error("Server error. Please try again.");
+    }
+    $stmt->bind_param("ss", $student_id_num, $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $result->num_rows > 0) {
+        $stmt->close();
+        redirect_with_error("An account already exists with this Student ID or Email.");
+    }
+    $stmt->close();
+
+    // Check if email already exists in students table
+    $check_student_email = "SELECT 1 FROM students WHERE email = ? LIMIT 1";
+    $stmt = $conn->prepare($check_student_email);
+    if (!$stmt) {
+        redirect_with_error("Server error. Please try again.");
+    }
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result && $result->num_rows > 0) {
+        $stmt->close();
+        redirect_with_error("An account already exists with this email.");
+    }
+    $stmt->close();
+
+    // --- 3. Hash the Password ---
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+    if ($hashed_password === false) {
+        redirect_with_error("Failed to hash the password. Please try again.");
+    }
+
+    echo "<pre>DEBUG - Starting database operations...\n";
+    
+    // --- 4. Insert into database WITHOUT transaction first ---
+    try {
+        // Step A: Insert into students table
+        echo "Step 1: Inserting into students table...\n";
+        $sql_students = "INSERT INTO students (firstname, lastname, course, year_level, email)
+                         VALUES (?, ?, ?, ?, ?)";
+        
+        $stmt_students = $conn->prepare($sql_students);
+        if (!$stmt_students) {
+            throw new Exception("Student prepare failed: " . $conn->error);
+        }
+        
+        $stmt_students->bind_param("sssss", $firstname, $lastname, $course, $year_level, $email);
+        
+        if ($stmt_students->execute()) {
+            $new_student_id = $conn->insert_id;
+            echo "✓ Student inserted! ID: $new_student_id\n";
+            $stmt_students->close();
+        } else {
+            throw new Exception("Student execute failed: " . $stmt_students->error);
+        }
+        
+        // Step B: Insert into student_login table
+        echo "\nStep 2: Inserting into student_login table...\n";
+        $sql_login = "INSERT INTO student_login (student_id, username, student_email, course, year_level, password)
+                      VALUES (?, ?, ?, ?, ?, ?)";
+        
+        $stmt_login = $conn->prepare($sql_login);
+        if (!$stmt_login) {
+            throw new Exception("Login prepare failed: " . $conn->error);
+        }
+        
+        echo "Binding params: student_id=$new_student_id, username=$student_id_num, email=$email, course=$course, year=$year_level\n";
+        
+        $stmt_login->bind_param("isssss", $new_student_id, $student_id_num, $email, $course, $year_level, $hashed_password);
+        
+        if ($stmt_login->execute()) {
+            echo "✓ Student login created successfully!\n";
+            $stmt_login->close();
+        } else {
+            throw new Exception("Login execute failed: " . $stmt_login->error);
+        }
+        
+        // Success!
+        echo "\n✓ Both inserts successful!\n";
+        echo "</pre>";
+        
+        $_SESSION['user_id'] = $new_student_id;
+        $_SESSION['user_type'] = 'student';
+        $_SESSION['signup_success'] = "Account successfully created!";
+        $_SESSION['student_id'] = $student_id_num;
+        $_SESSION['email'] = $email;
+
+        // Wait 3 seconds to see debug output, then redirect
+        echo "<script>
+            setTimeout(function() {
+                window.location.href = 'profile.php';
+            }, 3000);
+        </script>";
+        exit();
+        
+    } catch (Exception $e) {
+        echo "<pre>✗ ERROR: " . $e->getMessage() . "\n";
+        echo "</pre>";
+        
+        // Don't redirect - let user see the error
+        die("Registration failed. Please check the error above and contact support.");
+    }
+
+} else {
+    // Show the form (HTML part below)
 }
-
-} // Close the POST if block
-
-// Close the connection
-$conn->close();
 ?>
-
-
-
-
-
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>Student Management System | Sign Up</title>
+  <title>Student Management Systems | Sign Up</title>
   <meta name="description" content="Student Sign Up - Bicol University">
   <meta name="keywords" content="">
-
   <link href="assets/img/favicon.png" rel="icon">
   <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
-
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Jost:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/vendor/aos/aos.css" rel="stylesheet">
   <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
   <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
-
   <link href="assets/css/login.css" rel="stylesheet">
   <link href="assets/css/SignUp.css" rel="stylesheet">
-
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-  </head>
+</head>
 
 <body class="starter-page-page">
 
   <header id="header" class="header d-flex align-items-center sticky-top">
     <div class="container-fluid container-xl position-relative d-flex align-items-center">
-
-      <a href="index.html" class="logo d-flex align-items-center me-auto">
+      <a href="index.php" class="logo d-flex align-items-center me-auto">
         <h1 class="sitename">BICOL UNIVERSITY</h1>
       </a>
-
       <nav id="navmenu" class="navmenu">
         <ul>
-          <li><a href="index.html">Home</a></li>
+          <li><a href="index.php">Home</a></li>
           <li><a href="#about">About</a></li>
           <li><a href="#services">Services</a></li>
           <li><a href="#contact">Contact</a></li>
         </ul>
         <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
       </nav>
-
       <a class="btn-getstarted" href="login.php">Login</a>
-
     </div>
   </header>
 
@@ -265,14 +287,13 @@ $conn->close();
         <form id="signupForm" class="login-form" action="signup.php" method="POST">
           <h2>Create Student Account</h2>
           <p class="form-subtitle">Enter your student details</p>
-
+          
           <?php
           if (isset($_SESSION['signup_error'])) {
               echo '<div class="alert alert-danger" role="alert">' . htmlspecialchars($_SESSION['signup_error']) . '</div>';
-              unset($_SESSION['signup_error']); // Clear the message after display
+              unset($_SESSION['signup_error']);
           }
           if (isset($_SESSION['signup_success'])) {
-              // Note: Success case will redirect to profile.php, so this is mostly for debugging
               echo '<div class="alert alert-success" role="alert">' . htmlspecialchars($_SESSION['signup_success']) . '</div>';
               unset($_SESSION['signup_success']);
           }
@@ -415,7 +436,7 @@ $conn->close();
           </div>
           
           <div class="signup-link">
-            <p>Already have an account? <a href="login.html">Log In</a></p>
+            <p>Already have an account? <a href="login.php">Log In</a></p>
           </div>
         </form>
         
@@ -445,10 +466,6 @@ $conn->close();
     </div>
   </footer>
 
-  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
-
-  <div id="preloader"></div>
-
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="assets/vendor/php-email-form/validate.js"></script>
   <script src="assets/vendor/aos/aos.js"></script>
@@ -457,10 +474,6 @@ $conn->close();
   <script src="assets/vendor/waypoints/noframework.waypoints.js"></script>
   <script src="assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
   <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
-
   <script src="assets/js/main.js"></script>
-
-
 </body>
-
 </html>
