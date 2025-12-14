@@ -128,211 +128,444 @@ if (isset($conn) && $conn->connect_error) {
         </div>
     </header>
 
-    <main class="main">
-        <section class="admin-content section">
-            <div class="container">
-                
-                <div class="admin-header">
-                    <h1>Student Management Dashboard</h1>
-                    <p>Manage all student records, add new students, update information, and search through records</p>
-                </div>
+    
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Profile Content Section -->
+    <section class="profile-content section">
+      <div class="container">
+        <?php $fullName = htmlspecialchars(trim($student['firstname'] . ' ' . $student['lastname'])); ?>
 
-                <div class="admin-stats">
-                    <div class="stat-card">
-                        <div class="stat-icon total">
-                            <i class="bi bi-people"></i>
-                        </div>
-                        <div>
-                            <h3 id="totalStudents"><?php echo $totalStudents; ?></h3> 
-                            <p>Total Students</p>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon active">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <div>
-                            <h3 id="activeStudents">0</h3>
-                            <p>Active Students</p>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon new">
-                            <i class="bi bi-person-plus"></i>
-                        </div>
-                        <div>
-                            <h3 id="newStudents">0</h3>
-                            <p>New This Month</p>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon pending">
-                            <i class="bi bi-clock"></i>
-                        </div>
-                        <div>
-                            <h3 id="pendingStudents">0</h3>
-                            <p>Pending Updates</p>
-                        </div>
-                    </div>
-                </div>
+        <!-- Upload Success/Error Message -->
+        <?php if (isset($_GET['upload']) && $_GET['upload'] === 'success'): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+          <i class="bi bi-check-circle"></i> Profile picture updated successfully!
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($uploadMessage) && !$uploadSuccess): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($uploadMessage); ?>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php endif; ?>
 
-                <div class="row">
-                    <div class="col-lg-8">
-                        
-                        <div class="action-bar">
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <div class="search-box">
-                                        <i class="bi bi-search"></i>
-                                        <input type="text" id="searchInput" placeholder="Search students by name, ID, or email...">
-                                        <button class="search-clear" id="clearSearch">
-                                            <i class="bi bi-x"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <button class="btn btn-primary w-100" id="addStudentBtn">
-                                        <i class="bi bi-person-plus"></i> Add New Student
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="students-table-container">
-                            <div class="table-responsive">
-                                <table class="table" id="studentsTable">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Name</th>
-                                            <th>Program</th>
-                                            <th>Year</th>
-                                            <th>Email</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="studentsTableBody">
-                                        </tbody>
-                                </table>
-                            </div>
-                            
-                            <div class="text-center py-5" id="loadingState">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <p class="mt-3">Loading student data...</p>
-                            </div>
-                            
-                            <div class="text-center py-5 d-none" id="emptyState">
-                                <i class="bi bi-people display-1 text-muted"></i>
-                                <h4 class="mt-3">No students found</h4>
-                                <p class="text-muted">Add your first student using the "Add New Student" button</p>
-                            </div>
-                            
-                            <nav aria-label="Student pagination" class="mt-4" id="paginationContainer">
-                                <ul class="pagination justify-content-center" id="pagination">
-                                    </ul>
-                            </nav>
-                        </div>
-                    </div>
-                    
-                    <div class="col-lg-4 admin-sidebar">
-                        
-                        <div class="sidebar-section">
-                            <h4>Quick Actions</h4>
-                            <div class="quick-actions-list">
-                                <button class="quick-action-btn" id="exportDataBtn">
-                                    <i class="bi bi-download"></i>
-                                    <span>Export Data</span>
-                                </button>
-                                
-                                <button class="quick-action-btn" id="bulkUploadBtn">
-                                    <i class="bi bi-upload"></i>
-                                    <span>Bulk Upload</span>
-                                </button>
-                                
-                                <button class="quick-action-btn" id="manageProgramsBtn">
-                                    <i class="bi bi-journal-bookmark"></i>
-                                    <span>Manage Programs</span>
-                                </button>
-                                
-                                <button class="quick-action-btn" id="reportsBtn">
-                                    <i class="bi bi-graph-up"></i>
-                                    <span>Generate Reports</span>
-                                </button>
-                                
-                                <button class="quick-action-btn" id="refreshDataBtn">
-                                    <i class="bi bi-arrow-clockwise"></i>
-                                    <span>Refresh Data</span>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="sidebar-section">
-                            <h4>Recent Activity</h4>
-                            <div class="activity-list" id="recentActivity">
-                                <div class="activity-item">
-                                    <div class="activity-icon blue">
-                                        <i class="bi bi-person-plus"></i>
-                                    </div>
-                                    <div class="activity-content">
-                                        <h6>New student added</h6>
-                                        <small>Juan Dela Cruz - 2 minutes ago</small>
-                                    </div>
-                                </div>
-                                
-                                <div class="activity-item">
-                                    <div class="activity-icon green">
-                                        <i class="bi bi-pencil"></i>
-                                    </div>
-                                    <div class="activity-content">
-                                        <h6>Student record updated</h6>
-                                        <small>Maria Santos - 15 minutes ago</small>
-                                    </div>
-                                </div>
-                                
-                                <div class="activity-item">
-                                    <div class="activity-icon orange">
-                                        <i class="bi bi-trash"></i>
-                                    </div>
-                                    <div class="activity-content">
-                                        <h6>Student record deleted</h6>
-                                        <small>John Doe - 1 hour ago</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="sidebar-section">
-                            <h4>System Status</h4>
-                            <div class="system-status">
-                                <div class="status-item">
-                                    <span class="status-label">Database</span>
-                                    <span class="status-value online">Online</span>
-                                </div>
-                                <div class="status-item">
-                                    <span class="status-label">Storage</span>
-                                    <span class="status-value">65% Used</span>
-                                </div>
-                                <div class="status-item">
-                                    <span class="status-label">Last Backup</span>
-                                    <span class="status-value">Today, 02:00 AM</span>
-                                </div>
-                                <div class="status-item">
-                                    <span class="status-label">Active Sessions</span>
-                                    <span class="status-value">3</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Profile Completion Notice -->
+        <?php if (!$student['date_of_birth'] && !$student['gender'] && !$student['emergency_contact_name']): ?>
+        <div class="alert alert-info mb-4 d-flex align-items-center justify-content-between">
+          <div>
+            <i class="bi bi-info-circle"></i> <strong>Complete Your Profile</strong>
+            <p class="mb-0 mt-1">Please complete your profile information to access all features.</p>
+          </div>
+          <a href="setprofile.php" class="btn btn-primary">
+            <i class="bi bi-person-check"></i> Complete Profile
+          </a>
+        </div>
+        <?php endif; ?>
+        
+        <!-- Profile Header Card -->
+        <div class="profile-header-card">
+          <div class="profile-avatar-section">
+            <!-- Circular Avatar Container -->
+            <div class="profile-avatar-container">
+              <div class="avatar-wrapper">
+                <img src="<?php echo htmlspecialchars($profileImageSrc); ?>" alt="<?php echo htmlspecialchars($fullName); ?>" class="profile-main-avatar" id="mainProfileAvatar">
+                <button class="avatar-upload-btn" id="changeAvatarBtn" title="Change Profile Picture">
+                  <i class="bi bi-camera"></i>
+                </button>
+              </div>
             </div>
-        </section>
-    </main>
+            
+            <!-- Profile Info -->
+            <div class="profile-info-main">
+              <h1 class="student-name" id="mainProfileName"><?php echo $fullName ?: 'Student'; ?></h1>
+              <p class="student-id">Student ID: <?php echo htmlspecialchars($student['username']); ?></p>
+              <div class="program-badges">
+                <span class="program-badge"><?php echo htmlspecialchars($student['course']); ?></span>
+                <span class="year-badge"><?php echo htmlspecialchars($student['year_level']); ?></span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Progress Section -->
+          <div class="progress-section">
+            <h4>Program Progress</h4>
+            <div class="progress-bar-container">
+              <div class="progress-bar" style="width: 65%;"></div>
+            </div>
+            <div class="progress-text">
+              <span>65% Complete</span>
+              <span>78 of 120 credits</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <!-- Main Content Column -->
+          <div class="col-lg-8">
+            
+            <!-- Tabs Navigation -->
+            <div class="profile-tabs-nav">
+              <ul class="nav nav-tabs-custom" id="profileTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button">
+                    <i class="bi bi-person-vcard"></i> Personal Info
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="academic-tab" data-bs-toggle="tab" data-bs-target="#academic" type="button">
+                    <i class="bi bi-journal-bookmark"></i> Academic
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact-info" type="button">
+                    <i class="bi bi-telephone"></i> Contact
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button">
+                    <i class="bi bi-folder"></i> Documents
+                  </button>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="tab-content" id="profileTabContent">
+              
+              <!-- Personal Information Tab -->
+              <div class="tab-pane fade show active" id="personal" role="tabpanel">
+                <div class="info-grid">
+                  <div class="info-card">
+                    <h5>Personal Information</h5>
+                    <div class="info-item">
+                      <label>FULL NAME</label>
+                      <p id="infoFullName"><?php echo $fullName ?: 'Student'; ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>DATE OF BIRTH</label>
+                      <p id="infoDob"><?php echo $student['date_of_birth'] ? date('F d, Y', strtotime($student['date_of_birth'])) : '—'; ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>GENDER</label>
+                      <p id="infoGender"><?php echo htmlspecialchars($student['gender'] ?: '—'); ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>ADDRESS</label>
+                      <p id="infoAddress"><?php echo htmlspecialchars($student['address'] ?: '—'); ?></p>
+                    </div>
+                  </div>
+                  
+                  <div class="info-card">
+                    <h5>Additional Details</h5>
+                    <div class="info-item">
+                      <label>NATIONALITY</label>
+                      <p id="infoNationality"><?php echo htmlspecialchars($student['nationality'] ?: '—'); ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>MARITAL STATUS</label>
+                      <p id="infoMaritalStatus"><?php echo htmlspecialchars($student['marital_status'] ?: '—'); ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>BLOOD TYPE</label>
+                      <p id="infoBloodType"><?php echo htmlspecialchars($student['blood_type'] ?: '—'); ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>EMERGENCY CONTACT</label>
+                      <p id="infoEmergencyContact">
+                        <?php if ($student['emergency_contact_name']): ?>
+                          <?php echo htmlspecialchars($student['emergency_contact_name']); ?>
+                          <?php if ($student['emergency_contact_relationship']): ?>
+                            <br><small class="text-muted">(<?php echo htmlspecialchars($student['emergency_contact_relationship']); ?>)</small>
+                          <?php endif; ?>
+                          <?php if ($student['emergency_contact_phone']): ?>
+                            <br><small class="text-muted"><?php echo htmlspecialchars($student['emergency_contact_phone']); ?></small>
+                          <?php endif; ?>
+                        <?php else: ?>
+                          —
+                        <?php endif; ?>
+                      </p>
+                    </div>
+                    <a href="setprofile.php" class="btn btn-primary btn-sm mt-3">
+                      <i class="bi bi-pencil"></i> Edit Information
+                    </a>
+                  </div>
+                </div>
+                
+                <!-- Recent Activities -->
+                <div class="recent-activities">
+                  <h5>Recent Activities</h5>
+                  <div class="activity-list">
+                    <div class="activity-item">
+                      <div class="activity-icon blue">
+                        <i class="bi bi-check-circle"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Enrolled in "Data Structures" course</h6>
+                        <small>Today, 10:30 AM</small>
+                      </div>
+                    </div>
+                    
+                    <div class="activity-item">
+                      <div class="activity-icon green">
+                        <i class="bi bi-arrow-up-circle"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Submitted assignment for Algorithms</h6>
+                        <small>Yesterday, 3:45 PM</small>
+                      </div>
+                    </div>
+                    
+                    <div class="activity-item">
+                      <div class="activity-icon orange">
+                        <i class="bi bi-calendar-check"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Upcoming exam: Database Systems</h6>
+                        <small>March 25, 2024 • 2 days from now</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Academic Information Tab -->
+              <div class="tab-pane fade" id="academic" role="tabpanel">
+                <div class="info-grid">
+                  <div class="info-card">
+                    <h5>Academic Information</h5>
+                    <div class="info-item">
+                      <label>STUDENT ID</label>
+                      <p><?php echo htmlspecialchars($student['username']); ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>PROGRAM</label>
+                      <p><?php echo htmlspecialchars($student['course']); ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>YEAR LEVEL</label>
+                      <p><?php echo htmlspecialchars($student['year_level']); ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>COLLEGE</label>
+                      <p>College of Science</p>
+                    </div>
+                  </div>
+                  
+                  <div class="info-card">
+                    <h5>Academic Status</h5>
+                    <div class="info-item">
+                      <label>CURRENT GPA</label>
+                      <p>3.85 / 4.0</p>
+                    </div>
+                    <div class="info-item">
+                      <label>TOTAL CREDITS</label>
+                      <p>78 credits completed</p>
+                    </div>
+                    <div class="info-item">
+                      <label>ACADEMIC STANDING</label>
+                      <p class="text-success">Good Standing ✓</p>
+                    </div>
+                    <div class="info-item">
+                      <label>SCHOLARSHIP</label>
+                      <p>Academic Excellence Scholarship</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Contact Information Tab -->
+              <div class="tab-pane fade" id="contact-info" role="tabpanel">
+                <div class="info-grid">
+                  <div class="info-card">
+                    <h5>Contact Information</h5>
+                    <div class="info-item">
+                      <label>EMAIL ADDRESS</label>
+                      <p id="infoEmail"><?php echo htmlspecialchars($student['email']); ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>PHONE NUMBER</label>
+                      <p id="infoPhone"><?php echo htmlspecialchars($student['contact'] ?: '—'); ?></p>
+                    </div>
+                  </div>
+                  
+                  <div class="info-card">
+                    <h5>Emergency Contact</h5>
+                    <div class="info-item">
+                      <label>CONTACT PERSON</label>
+                      <p id="infoEmergencyContact"><?php echo htmlspecialchars($student['emergency_contact_name'] ?: '—'); ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>RELATIONSHIP</label>
+                      <p><?php echo htmlspecialchars($student['emergency_contact_relationship'] ?: '—'); ?></p>
+                    </div>
+                    <div class="info-item">
+                      <label>PHONE NUMBER</label>
+                      <p id="infoEmergencyPhone"><?php echo htmlspecialchars($student['emergency_contact_phone'] ?: '—'); ?></p>
+                    </div>
+                    <a href="setprofile.php" class="btn btn-primary btn-sm mt-3">
+                      <i class="bi bi-pencil"></i> Edit Contact
+                    </a>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Documents Tab -->
+              <div class="tab-pane fade" id="documents" role="tabpanel">
+                <div class="document-list">
+                  <div class="document-item">
+                    <div class="document-icon pdf">
+                      <i class="bi bi-file-earmark-pdf"></i>
+                    </div>
+                    <div class="document-info">
+                      <h6>Transcript of Records</h6>
+                      <small>Uploaded: Jan 15, 2024 • Size: 2.4 MB</small>
+                    </div>
+                    <div class="document-actions">
+                      <button class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-download"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="document-item">
+                    <div class="document-icon image">
+                      <i class="bi bi-file-earmark-image"></i>
+                    </div>
+                    <div class="document-info">
+                      <h6>ID Picture</h6>
+                      <small>Uploaded: Dec 10, 2023 • Size: 1.2 MB</small>
+                    </div>
+                    <div class="document-actions">
+                      <button class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-download"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="document-item">
+                    <div class="document-icon word">
+                      <i class="bi bi-file-earmark-word"></i>
+                    </div>
+                    <div class="document-info">
+                      <h6>Application Form</h6>
+                      <small>Uploaded: Aug 5, 2023 • Size: 850 KB</small>
+                    </div>
+                    <div class="document-actions">
+                      <button class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-download"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <button class="btn btn-primary btn-sm mt-3">
+                    <i class="bi bi-cloud-upload"></i> Upload Document
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Sidebar Column -->
+          <div class="col-lg-4 profile-sidebar">
+            
+            <!-- Quick Actions -->
+            <div class="sidebar-section">
+              <h4>Quick Actions</h4>
+              <div class="quick-actions-list">
+                <a href="course.php" class="quick-action-btn text-decoration-none">
+                  <i class="bi bi-journal-text"></i>
+                  <span>View Courses</span>
+                </a>
+                
+                <a href="grade.php" class="quick-action-btn text-decoration-none">
+                  <i class="bi bi-graph-up"></i>
+                  <span>Check Grades</span>
+                </a>
+                
+                <a href="schedule.php" class="quick-action-btn text-decoration-none">
+                  <i class="bi bi-calendar-week"></i>
+                  <span>View Schedule</span>
+                </a>
+                
+                <button class="quick-action-btn" id="printProfileBtn">
+                  <i class="bi bi-printer"></i>
+                  <span>Print Profile</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Upcoming Events -->
+            <div class="sidebar-section">
+              <h4>Upcoming Events</h4>
+              <div class="event-list">
+                <div class="event-item">
+                  <div class="event-date">
+                    <span class="event-day">25</span>
+                    <span class="event-month">MAR</span>
+                  </div>
+                  <div class="event-details">
+                    <h6>Midterm Exams Begin</h6>
+                    <small>All Departments</small>
+                  </div>
+                </div>
+                
+                <div class="event-item">
+                  <div class="event-date">
+                    <span class="event-day">05</span>
+                    <span class="event-month">APR</span>
+                  </div>
+                  <div class="event-details">
+                    <h6>University Foundation Day</h6>
+                    <small>No Classes</small>
+                  </div>
+                </div>
+                
+                <div class="event-item">
+                  <div class="event-date">
+                    <span class="event-day">15</span>
+                    <span class="event-month">APR</span>
+                  </div>
+                  <div class="event-details">
+                    <h6>Final Submission Deadline</h6>
+                    <small>Research Papers</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Important Contacts -->
+            <div class="sidebar-section">
+              <h4>Important Contacts</h4>
+              <div class="contact-list">
+                <div class="contact-item">
+                  <div class="contact-icon">
+                    <i class="bi bi-person-badge"></i>
+                  </div>
+                  <div class="contact-info">
+                    <h6>Academic Advisor</h6>
+                    <small>Dr. Maria Santos</small>
+                    <small>maria.santos@bicol-u.edu.ph</small>
+                  </div>
+                </div>
+                
+                <div class="contact-item">
+                  <div class="contact-icon">
+                    <i class="bi bi-headset"></i>
+                  </div>
+                  <div class="contact-info">
+                    <h6>Student Support</h6>
+                    <small>(052) 742-1234</small>
+                    <small>support@bicol-u.edu.ph</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
     <footer id="footer" class="footer">
         <div class="container copyright text-center mt-4">

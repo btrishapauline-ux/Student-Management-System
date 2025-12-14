@@ -15,17 +15,32 @@ $studentId = (int)$_SESSION['user_id'];
 $fullName = 'Student';
 
 // Handle profile image upload
+$uploadMessage = '';
+$uploadSuccess = false;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_image'])) {
-    // Check if profile_image column exists
+    // Check if profile_image column exists, create if it doesn't
     $checkColumnSql = "SHOW COLUMNS FROM students LIKE 'profile_image'";
     $checkResult = $conn->query($checkColumnSql);
     $columnExists = ($checkResult && $checkResult->num_rows > 0);
     
-    if ($columnExists && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
+    // Create column if it doesn't exist
+    if (!$columnExists) {
+        $createColumnSql = "ALTER TABLE students ADD COLUMN profile_image LONGTEXT";
+        $conn->query($createColumnSql);
+        $columnExists = true;
+    }
+    
+    if ($_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
         $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
         $fileType = $_FILES['profile_image']['type'];
+        $fileSize = $_FILES['profile_image']['size'];
+        $maxSize = 5 * 1024 * 1024; // 5MB
         
-        if (in_array($fileType, $allowedTypes)) {
+        // Validate file size
+        if ($fileSize > $maxSize) {
+            $uploadMessage = 'File size exceeds 5MB limit.';
+        } elseif (in_array($fileType, $allowedTypes)) {
             // Read image file and convert to base64
             $imageData = file_get_contents($_FILES['profile_image']['tmp_name']);
             $imageBase64 = base64_encode($imageData);
@@ -33,10 +48,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_image'])) {
             // Update database with base64 encoded image
             $updateSql = "UPDATE students SET profile_image = ? WHERE student_id = ?";
             $updateStmt = $conn->prepare($updateSql);
-            $updateStmt->bind_param('si', $imageBase64, $studentId);
-            $updateStmt->execute();
-            $updateStmt->close();
+            if ($updateStmt) {
+                $updateStmt->bind_param('si', $imageBase64, $studentId);
+                if ($updateStmt->execute()) {
+                    $uploadSuccess = true;
+                    $uploadMessage = 'Profile picture updated successfully!';
+                    // Redirect to avoid resubmission on refresh
+                    header('Location: profile.php?upload=success');
+                    exit();
+                } else {
+                    $uploadMessage = 'Failed to update profile picture.';
+                }
+                $updateStmt->close();
+            } else {
+                $uploadMessage = 'Database error occurred.';
+            }
+        } else {
+            $uploadMessage = 'Invalid file type. Please upload JPG, PNG, or GIF images only.';
         }
+    } elseif ($_FILES['profile_image']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $uploadMessage = 'Error uploading file. Please try again.';
     }
 }
 
@@ -153,6 +184,9 @@ $profileImageSrc = getProfileImageSrc($student['profile_image']);
   
   <!-- Student Profile CSS -->
   <link href="assets/css/student-profile.css" rel="stylesheet">
+  
+  <!-- Dark Mode CSS -->
+  <link href="assets/css/dark-mode.css" rel="stylesheet">
 </head>
 
 <body class="student-profile-page">
@@ -162,18 +196,19 @@ $profileImageSrc = getProfileImageSrc($student['profile_image']);
     <div class="container-fluid container-xl position-relative d-flex align-items-center">
 
       <!-- Logo -->
-      <a href="index.html" class="logo d-flex align-items-center me-auto">
+      <a href="index.php" class="logo d-flex align-items-center me-auto">
+        <img src="assets/img/logo.png" alt="Bicol University Logo" style="height: 40px; margin-right: 10px;">
         <h1 class="sitename">BICOL UNIVERSITY</h1>
       </a>
 
       <!-- Navigation Menu -->
       <nav id="navmenu" class="navmenu">
         <ul>
-          <li><a href="index.html">Home</a></li>
-          <li><a href="student-profile.html" class="active">Profile</a></li>
-          <li><a href="student-courses.html">Courses</a></li>
-          <li><a href="student-grades.html">Grades</a></li>
-          <li><a href="student-schedule.html">Schedule</a></li>
+          <li><a href="index.php">Home</a></li>
+          <li><a href="profile.php" class="active">Profile</a></li>
+          <li><a href="course.php">Courses</a></li>
+          <li><a href="grade.php">Grades</a></li>
+          <li><a href="schedule.php">Schedule</a></li>
         </ul>
         <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
       </nav>
@@ -200,11 +235,8 @@ $profileImageSrc = getProfileImageSrc($student['profile_image']);
             </div>
           </div>
           <div class="dropdown-divider"></div>
-          <a href="student-profile.html" class="dropdown-item">
+          <a href="profile.php" class="dropdown-item">
             <i class="bi bi-person"></i> My Profile
-          </a>
-          <a href="student-settings.html" class="dropdown-item">
-            <i class="bi bi-gear"></i> Settings
           </a>
           <div class="dropdown-divider"></div>
           <a href="logout.php" class="dropdown-item">
@@ -222,6 +254,20 @@ $profileImageSrc = getProfileImageSrc($student['profile_image']);
     <section class="profile-content section">
       <div class="container">
         <?php $fullName = htmlspecialchars(trim($student['firstname'] . ' ' . $student['lastname'])); ?>
+
+        <!-- Upload Success/Error Message -->
+        <?php if (isset($_GET['upload']) && $_GET['upload'] === 'success'): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+          <i class="bi bi-check-circle"></i> Profile picture updated successfully!
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($uploadMessage) && !$uploadSuccess): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($uploadMessage); ?>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php endif; ?>
 
         <!-- Profile Completion Notice -->
         <?php if (!$student['date_of_birth'] && !$student['gender'] && !$student['emergency_contact_name']): ?>
@@ -546,25 +592,20 @@ $profileImageSrc = getProfileImageSrc($student['profile_image']);
             <div class="sidebar-section">
               <h4>Quick Actions</h4>
               <div class="quick-actions-list">
-                <button class="quick-action-btn" onclick="window.location.href='student-courses.html'">
+                <a href="course.php" class="quick-action-btn text-decoration-none">
                   <i class="bi bi-journal-text"></i>
                   <span>View Courses</span>
-                </button>
+                </a>
                 
-                <button class="quick-action-btn" onclick="window.location.href='student-grades.html'">
+                <a href="grade.php" class="quick-action-btn text-decoration-none">
                   <i class="bi bi-graph-up"></i>
                   <span>Check Grades</span>
-                </button>
+                </a>
                 
-                <button class="quick-action-btn" onclick="window.location.href='student-schedule.html'">
+                <a href="schedule.php" class="quick-action-btn text-decoration-none">
                   <i class="bi bi-calendar-week"></i>
                   <span>View Schedule</span>
-                </button>
-                
-                <button class="quick-action-btn" onclick="window.location.href='student-payments.html'">
-                  <i class="bi bi-credit-card"></i>
-                  <span>Payments</span>
-                </button>
+                </a>
                 
                 <button class="quick-action-btn" id="printProfileBtn">
                   <i class="bi bi-printer"></i>
@@ -684,7 +725,7 @@ $profileImageSrc = getProfileImageSrc($student['profile_image']);
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="submit" class="btn btn-primary" id="saveAvatarBtn">Save Changes</button>
           </div>
         </form>
       </div>
@@ -693,16 +734,45 @@ $profileImageSrc = getProfileImageSrc($student['profile_image']);
   
   <script>
     // Preview image before upload
-    document.getElementById('avatarFileInput').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          document.getElementById('avatarPreview').src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
-    });
+    const avatarFileInput = document.getElementById('avatarFileInput');
+    const avatarPreview = document.getElementById('avatarPreview');
+    
+    if (avatarFileInput) {
+      avatarFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          // Validate file size (max 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+            alert('File size should be less than 5MB');
+            this.value = '';
+            return;
+          }
+          
+          // Validate file type
+          const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+          if (!allowedTypes.includes(file.type)) {
+            alert('Please select a valid image file (JPG, PNG, or GIF)');
+            this.value = '';
+            return;
+          }
+          
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            avatarPreview.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+    
+    // Form submission - let it submit naturally, the modal will close automatically
+    const avatarUploadForm = document.getElementById('avatarUploadForm');
+    if (avatarUploadForm) {
+      avatarUploadForm.addEventListener('submit', function(e) {
+        // Form will submit normally, PHP will handle it
+        // Bootstrap modal will close on form submit if successful
+      });
+    }
   </script>
 
   <!-- Edit Info Modal -->
@@ -759,5 +829,8 @@ $profileImageSrc = getProfileImageSrc($student['profile_image']);
   
   <!-- Student Profile JS -->
   <script src="assets/js/student-profile.js"></script>
+  
+  <!-- Dark Mode JS -->
+  <script src="assets/js/dark-mode.js"></script>
 </body>
 </html>

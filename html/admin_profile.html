@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Admin Profile | Bicol University</title>
+  <meta name="description" content="Admin Profile Dashboard">
+  <meta name="keywords" content="admin, profile, dashboard, university">
+
+  <!-- Favicons -->
+  <link href="../assets/img/logo.png" rel="icon" type="image/png">
+  <link href="../assets/img/logo.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Jost:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Vendor CSS Files -->
+  <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="../assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="../assets/css/main.css" rel="stylesheet">
+  
+  <!-- Student Profile CSS -->
+  <link href="../assets/css/student-profile.css" rel="stylesheet">
+  
+  <!-- Dark Mode CSS -->
+  <link href="../assets/css/dark-mode.css" rel="stylesheet">
+</head>
+
+<body class="student-profile-page">
+
+  <!-- Header -->
+  <header id="header" class="header d-flex align-items-center fixed-top">
+    <div class="container-fluid container-xl position-relative d-flex align-items-center">
+
+      <!-- Logo -->
+      <a href="index.html" class="logo d-flex align-items-center me-auto">
+        <img src="../assets/img/logo.png" alt="Bicol University Logo" style="height: 40px; margin-right: 10px;">
+        <h1 class="sitename">BICOL UNIVERSITY</h1>
+      </a>
+
+      <!-- Navigation Menu -->
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="admin.html">Dashboard</a></li>
+          <li><a href="admin_profile.html" class="active">Profile</a></li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      </nav>
+
+      <!-- Profile Dropdown -->
+      <div class="profile-dropdown">
+        <div class="profile-trigger" id="profileTrigger">
+          <div class="profile-avatar">
+            <img src="../assets/img/admin-avatar.jpg" alt="Admin Avatar" id="profileAvatar">
+          </div>
+          <div class="profile-info">
+            <span class="profile-name" id="profileName">Admin User</span>
+            <span class="profile-role">Administrator</span>
+          </div>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        
+        <div class="profile-dropdown-menu" id="profileDropdown">
+          <div class="dropdown-header">
+            <img src="../assets/img/admin-avatar.jpg" alt="Admin Avatar" id="dropdownAvatar">
+            <div>
+              <h6 id="dropdownName">Admin User</h6>
+              <span>Administrator</span>
+            </div>
+          </div>
+          <div class="dropdown-divider"></div>
+          <a href="admin_profile.html" class="dropdown-item">
+            <i class="bi bi-person"></i> My Profile
+          </a>
+          <a href="admin.html" class="dropdown-item">
+            <i class="bi bi-speedometer2"></i> Dashboard
+          </a>
+          <div class="dropdown-divider"></div>
+          <a href="#" class="dropdown-item">
+            <i class="bi bi-box-arrow-right"></i> Logout
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+    <section class="profile-content section">
+      <div class="container">
+        
+        <!-- Profile Header Card -->
+        <div class="profile-header-card">
+          <div class="profile-avatar-section">
+            <div class="profile-avatar-container">
+              <div class="avatar-wrapper">
+                <img src="../assets/img/admin-avatar.jpg" alt="Admin User" class="profile-main-avatar">
+              </div>
+            </div>
+            
+            <div class="profile-info-main">
+              <h1 class="student-name">Admin User</h1>
+              <p class="student-id">Admin ID: ADMIN-001</p>
+              <div class="program-badges">
+                <span class="program-badge">Administrator</span>
+                <span class="year-badge">System Admin</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="progress-section">
+            <h4>System Statistics</h4>
+            <p style="margin: 0; font-size: 18px; color: #37517e; font-weight: 600;">1,250 Students</p>
+            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Total Registered</p>
+          </div>
+        </div>
+
+        <div class="row">
+          <!-- Main Content Column -->
+          <div class="col-lg-8">
+            
+            <!-- Tabs Navigation -->
+            <div class="profile-tabs-nav">
+              <ul class="nav nav-tabs-custom" id="profileTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button">
+                    <i class="bi bi-person-vcard"></i> Admin Info
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button">
+                    <i class="bi bi-gear"></i> Settings
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" type="button">
+                    <i class="bi bi-clock-history"></i> Activity Log
+                  </button>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="tab-content" id="profileTabContent">
+              
+              <!-- Admin Information Tab -->
+              <div class="tab-pane fade show active" id="info" role="tabpanel">
+                <div class="info-grid">
+                  <div class="info-card">
+                    <h5>Administrator Information</h5>
+                    <div class="info-item">
+                      <label>FULL NAME</label>
+                      <p>Admin User</p>
+                    </div>
+                    <div class="info-item">
+                      <label>USERNAME</label>
+                      <p>admin</p>
+                    </div>
+                    <div class="info-item">
+                      <label>EMAIL ADDRESS</label>
+                      <p>admin@bicol-u.edu.ph</p>
+                    </div>
+                    <div class="info-item">
+                      <label>ADMIN ID</label>
+                      <p>ADMIN-001</p>
+                    </div>
+                    <div class="info-item">
+                      <label>DEPARTMENT</label>
+                      <p>Information Technology Services</p>
+                    </div>
+                  </div>
+                  
+                  <div class="info-card">
+                    <h5>System Access</h5>
+                    <div class="info-item">
+                      <label>ROLE</label>
+                      <p>System Administrator</p>
+                    </div>
+                    <div class="info-item">
+                      <label>PERMISSIONS</label>
+                      <p>Full System Access</p>
+                    </div>
+                    <div class="info-item">
+                      <label>LAST LOGIN</label>
+                      <p>March 23, 2024 10:30 AM</p>
+                    </div>
+                    <div class="info-item">
+                      <label>ACCOUNT CREATED</label>
+                      <p>January 15, 2023</p>
+                    </div>
+                    <div class="info-item">
+                      <label>STATUS</label>
+                      <p class="text-success">Active ✓</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Recent Activities -->
+                <div class="recent-activities">
+                  <h5>Recent Activities</h5>
+                  <div class="activity-list">
+                    <div class="activity-item">
+                      <div class="activity-icon blue">
+                        <i class="bi bi-person-plus"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Added new student: Maria Santos</h6>
+                        <small>Today, 2:15 PM</small>
+                      </div>
+                    </div>
+                    
+                    <div class="activity-item">
+                      <div class="activity-icon green">
+                        <i class="bi bi-pencil"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Updated student record: Juan Dela Cruz</h6>
+                        <small>Today, 11:45 AM</small>
+                      </div>
+                    </div>
+                    
+                    <div class="activity-item">
+                      <div class="activity-icon orange">
+                        <i class="bi bi-download"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Exported student data report</h6>
+                        <small>Yesterday, 4:20 PM</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Settings Tab -->
+              <div class="tab-pane fade" id="settings" role="tabpanel">
+                <div class="info-card">
+                  <h5>Account Settings</h5>
+                  
+                  <div class="info-item mb-4">
+                    <label>CHANGE PASSWORD</label>
+                    <p>Update your account password for better security</p>
+                    <button class="btn btn-primary btn-sm mt-2">
+                      <i class="bi bi-key"></i> Change Password
+                    </button>
+                  </div>
+                  
+                  <div class="info-item mb-4">
+                    <label>NOTIFICATION PREFERENCES</label>
+                    <p>Manage your email and system notification settings</p>
+                    <button class="btn btn-outline-primary btn-sm mt-2">
+                      <i class="bi bi-bell"></i> Manage Notifications
+                    </button>
+                  </div>
+                  
+                  <div class="info-item mb-4">
+                    <label>PRIVACY SETTINGS</label>
+                    <p>Control your privacy and data sharing preferences</p>
+                    <button class="btn btn-outline-primary btn-sm mt-2">
+                      <i class="bi bi-shield-check"></i> Privacy Settings
+                    </button>
+                  </div>
+                  
+                  <div class="info-item">
+                    <label>SYSTEM PREFERENCES</label>
+                    <p>Customize your dashboard and interface preferences</p>
+                    <button class="btn btn-outline-primary btn-sm mt-2">
+                      <i class="bi bi-sliders"></i> System Preferences
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Activity Log Tab -->
+              <div class="tab-pane fade" id="activity" role="tabpanel">
+                <div class="info-card">
+                  <h5>Activity Log</h5>
+                  <p class="text-muted mb-4">View your recent system activities and actions</p>
+                  
+                  <div class="activity-list">
+                    <div class="activity-item">
+                      <div class="activity-icon blue">
+                        <i class="bi bi-person-plus"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Added new student: Maria Santos</h6>
+                        <small>Today, 2:15 PM</small>
+                      </div>
+                    </div>
+                    
+                    <div class="activity-item">
+                      <div class="activity-icon green">
+                        <i class="bi bi-pencil"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Updated student record: Juan Dela Cruz</h6>
+                        <small>Today, 11:45 AM</small>
+                      </div>
+                    </div>
+                    
+                    <div class="activity-item">
+                      <div class="activity-icon orange">
+                        <i class="bi bi-download"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Exported student data report</h6>
+                        <small>Yesterday, 4:20 PM</small>
+                      </div>
+                    </div>
+                    
+                    <div class="activity-item">
+                      <div class="activity-icon purple">
+                        <i class="bi bi-search"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Searched for student records</h6>
+                        <small>Yesterday, 3:10 PM</small>
+                      </div>
+                    </div>
+                    
+                    <div class="activity-item">
+                      <div class="activity-icon red">
+                        <i class="bi bi-trash"></i>
+                      </div>
+                      <div class="activity-content">
+                        <h6>Deleted student record: Test Student</h6>
+                        <small>March 22, 2024, 1:30 PM</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Sidebar Column -->
+          <div class="col-lg-4 profile-sidebar">
+            
+            <!-- Quick Actions -->
+            <div class="sidebar-section">
+              <h4>Quick Actions</h4>
+              <div class="quick-actions-list">
+                <a href="admin.html" class="quick-action-btn text-decoration-none">
+                  <i class="bi bi-speedometer2"></i>
+                  <span>Dashboard</span>
+                </a>
+                
+                <a href="admin.html" class="quick-action-btn text-decoration-none">
+                  <i class="bi bi-people"></i>
+                  <span>Manage Students</span>
+                </a>
+                
+                <button class="quick-action-btn" id="printProfileBtn">
+                  <i class="bi bi-printer"></i>
+                  <span>Print Profile</span>
+                </button>
+                
+                <button class="quick-action-btn">
+                  <i class="bi bi-download"></i>
+                  <span>Export Data</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- System Stats -->
+            <div class="sidebar-section">
+              <h4>System Statistics</h4>
+              <div class="info-item mb-3">
+                <label>TOTAL STUDENTS</label>
+                <p style="font-size: 24px; font-weight: 600; color: #47b2e4;">1,250</p>
+              </div>
+              <div class="info-item mb-3">
+                <label>ACTIVE STUDENTS</label>
+                <p style="font-size: 20px; font-weight: 600; color: #28a745;">1,180</p>
+              </div>
+              <div class="info-item">
+                <label>INACTIVE STUDENTS</label>
+                <p style="font-size: 20px; font-weight: 600; color: #dc3545;">70</p>
+              </div>
+            </div>
+            
+            <!-- Upcoming Events -->
+            <div class="sidebar-section">
+              <h4>Upcoming Events</h4>
+              <div class="event-list">
+                <div class="event-item">
+                  <div class="event-date">
+                    <span class="event-day">25</span>
+                    <span class="event-month">MAR</span>
+                  </div>
+                  <div class="event-details">
+                    <h6>Midterm Exams Begin</h6>
+                    <small>All Departments</small>
+                  </div>
+                </div>
+                
+                <div class="event-item">
+                  <div class="event-date">
+                    <span class="event-day">05</span>
+                    <span class="event-month">APR</span>
+                  </div>
+                  <div class="event-details">
+                    <h6>University Foundation Day</h6>
+                    <small>No Classes</small>
+                  </div>
+                </div>
+                
+                <div class="event-item">
+                  <div class="event-date">
+                    <span class="event-day">15</span>
+                    <span class="event-month">APR</span>
+                  </div>
+                  <div class="event-details">
+                    <h6>Final Submission Deadline</h6>
+                    <small>Research Papers</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Important Contacts -->
+            <div class="sidebar-section">
+              <h4>Important Contacts</h4>
+              <div class="contact-list">
+                <div class="contact-item">
+                  <div class="contact-icon">
+                    <i class="bi bi-headset"></i>
+                  </div>
+                  <div class="contact-info">
+                    <h6>IT Support</h6>
+                    <small>(052) 742-1234</small>
+                    <small>itsupport@bicol-u.edu.ph</small>
+                  </div>
+                </div>
+                
+                <div class="contact-item">
+                  <div class="contact-icon">
+                    <i class="bi bi-envelope"></i>
+                  </div>
+                  <div class="contact-info">
+                    <h6>System Administrator</h6>
+                    <small>sysadmin@bicol-u.edu.ph</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer id="footer" class="footer">
+    <div class="container copyright text-center mt-4">
+      <p>© <span>Copyright</span> <strong class="px-1 sitename">Bicol University</strong> <span>All Rights Reserved</span></p>
+      <div class="credits">
+        Student Management System v2.0
+      </div>
+    </div>
+  </footer>
+
+  <!-- Vendor JS Files -->
+  <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="../assets/vendor/aos/aos.js"></script>
+  
+  <!-- Student Profile JS -->
+  <script src="../assets/js/student-profile.js"></script>
+  
+  <!-- Dark Mode JS -->
+  <script src="../assets/js/dark-mode.js"></script>
+</body>
+</html>
+

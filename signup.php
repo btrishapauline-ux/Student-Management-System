@@ -205,8 +205,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <title>Student Management Systems | Sign Up</title>
   <meta name="description" content="Student Sign Up - Bicol University">
   <meta name="keywords" content="">
-  <link href="assets/img/favicon.png" rel="icon">
-  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+  <link href="assets/img/logo.png" rel="icon" type="image/png">
+  <link href="assets/img/logo.png" rel="apple-touch-icon">
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Jost:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
@@ -218,6 +218,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <link href="assets/css/login.css" rel="stylesheet">
   <link href="assets/css/SignUp.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Dark Mode CSS -->
+  <link href="assets/css/dark-mode.css" rel="stylesheet">
 </head>
 
 <body class="starter-page-page">
@@ -225,6 +228,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <header id="header" class="header d-flex align-items-center sticky-top">
     <div class="container-fluid container-xl position-relative d-flex align-items-center">
       <a href="index.php" class="logo d-flex align-items-center me-auto">
+        <img src="assets/img/logo.png" alt="Bicol University Logo" style="height: 40px; margin-right: 10px;">
         <h1 class="sitename">BICOL UNIVERSITY</h1>
       </a>
       <nav id="navmenu" class="navmenu">
@@ -385,7 +389,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <div class="input-with-icon">
               <input type="password" id="password" name="password" placeholder="Create a strong password" required>
               <i class="fas fa-key input-icon"></i>
-              <button type="button" class="toggle-password" id="togglePassword">
+              <button type="button" class="toggle-password" id="togglePassword" onclick="togglePasswordVisibility('password', 'togglePassword')">
                 <i class="fas fa-eye"></i>
               </button>
             </div>
@@ -400,6 +404,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <div class="input-with-icon">
               <input type="password" id="confirmPassword" name="confirm_password" placeholder="Re-enter your password" required>
               <i class="fas fa-key input-icon"></i>
+              <button type="button" class="toggle-password" id="toggleConfirmPassword" onclick="togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword')">
+                <i class="fas fa-eye"></i>
+              </button>
             </div>
             <div class="error-message" id="confirmPasswordError"></div>
           </div>
@@ -475,5 +482,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <script src="assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
   <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
   <script src="assets/js/main.js"></script>
+  
+  <script>
+    function togglePasswordVisibility(inputId, buttonId) {
+        const input = document.getElementById(inputId);
+        const button = document.getElementById(buttonId);
+        const icon = button.querySelector('i');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+  </script>
+  
+  <!-- Dark Mode JS -->
+  <script src="assets/js/dark-mode.js"></script>
 </body>
 </html>

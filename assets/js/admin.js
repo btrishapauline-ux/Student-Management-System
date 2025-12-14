@@ -116,10 +116,20 @@ async function fetchStudents(searchTerm = '') {
     const pageStudents = students.slice(startIndex, endIndex);
 
     pageStudents.forEach(student => {
+        const profileImageSrc = (student.profileImage || student.profile_image) ? 
+            `data:image/jpeg;base64,${student.profileImage || student.profile_image}` : 
+            'assets/img/student-avatar.jpg';
+        
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${student.studentId}</td>
-            <td>${student.firstName} ${student.lastName}</td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <img src="${profileImageSrc}" alt="${student.firstName} ${student.lastName}" 
+                         style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 2px solid #e7f4ff;">
+                    <span>${student.firstName} ${student.lastName}</span>
+                </div>
+            </td>
             <td>${student.program}</td>
             <td>${student.yearLevel}</td>
             <td>${student.email}</td>
@@ -469,8 +479,8 @@ async function viewStudent(id) {
         if (!data.success) throw new Error(data.message || 'Failed to load student details');
         
         const student = data.data;
-        const profileImageSrc = student.profileImage ? 
-            `data:image/jpeg;base64,${student.profileImage}` : 
+        const profileImageSrc = (student.profileImage || student.profile_image) ? 
+            `data:image/jpeg;base64,${student.profileImage || student.profile_image}` : 
             'assets/img/student-avatar.jpg';
         
         const studentDetails = document.getElementById('studentDetails');

@@ -54,11 +54,26 @@ switch ($action) {
 // ---------- Handlers ----------
 
 function list_students($conn) {
-    $sql = "SELECT s.student_id, s.firstname, s.lastname, s.course, s.year_level, 
-                   s.email, s.contact, s.address, sl.username, sl.student_email
-            FROM students s
-            LEFT JOIN student_login sl ON sl.student_id = s.student_id
-            ORDER BY s.student_id DESC";
+    // Check if profile_image column exists
+    $checkColumnSql = "SHOW COLUMNS FROM students LIKE 'profile_image'";
+    $checkResult = $conn->query($checkColumnSql);
+    $hasProfileImage = ($checkResult && $checkResult->num_rows > 0);
+    
+    if ($hasProfileImage) {
+        $sql = "SELECT s.student_id, s.firstname, s.lastname, s.course, s.year_level, 
+                       s.email, s.contact, s.address, s.profile_image,
+                       sl.username, sl.student_email
+                FROM students s
+                LEFT JOIN student_login sl ON sl.student_id = s.student_id
+                ORDER BY s.student_id DESC";
+    } else {
+        $sql = "SELECT s.student_id, s.firstname, s.lastname, s.course, s.year_level, 
+                       s.email, s.contact, s.address,
+                       sl.username, sl.student_email
+                FROM students s
+                LEFT JOIN student_login sl ON sl.student_id = s.student_id
+                ORDER BY s.student_id DESC";
+    }
     $result = $conn->query($sql);
     $students = [];
     if ($result) {
@@ -79,26 +94,52 @@ function search_students($conn) {
         json_response(['success' => true, 'data' => []]);
     }
     
+    // Check if profile_image column exists
+    $checkColumnSql = "SHOW COLUMNS FROM students LIKE 'profile_image'";
+    $checkResult = $conn->query($checkColumnSql);
+    $hasProfileImage = ($checkResult && $checkResult->num_rows > 0);
+    
     // Comprehensive search across all connected information
     // Start with basic fields that definitely exist, then add optional fields
-    $sql = "SELECT DISTINCT s.student_id, s.firstname, s.lastname, s.course, s.year_level, 
-                   s.email, s.contact, s.address,
-                   sl.username, sl.student_email
-            FROM students s
-            LEFT JOIN student_login sl ON sl.student_id = s.student_id
-            WHERE s.firstname LIKE ? 
-               OR s.lastname LIKE ? 
-               OR CONCAT(s.firstname, ' ', s.lastname) LIKE ?
-               OR s.email LIKE ?
-               OR COALESCE(s.contact, '') LIKE ?
-               OR COALESCE(s.address, '') LIKE ?
-               OR s.course LIKE ?
-               OR s.year_level LIKE ?
-               OR COALESCE(sl.username, '') LIKE ?
-               OR COALESCE(sl.student_email, '') LIKE ?
-               OR CAST(s.student_id AS CHAR) LIKE ?
-            ORDER BY s.lastname ASC, s.firstname ASC
-            LIMIT 100";
+    if ($hasProfileImage) {
+        $sql = "SELECT DISTINCT s.student_id, s.firstname, s.lastname, s.course, s.year_level, 
+                       s.email, s.contact, s.address, s.profile_image,
+                       sl.username, sl.student_email
+                FROM students s
+                LEFT JOIN student_login sl ON sl.student_id = s.student_id
+                WHERE s.firstname LIKE ? 
+                   OR s.lastname LIKE ? 
+                   OR CONCAT(s.firstname, ' ', s.lastname) LIKE ?
+                   OR s.email LIKE ?
+                   OR COALESCE(s.contact, '') LIKE ?
+                   OR COALESCE(s.address, '') LIKE ?
+                   OR s.course LIKE ?
+                   OR s.year_level LIKE ?
+                   OR COALESCE(sl.username, '') LIKE ?
+                   OR COALESCE(sl.student_email, '') LIKE ?
+                   OR CAST(s.student_id AS CHAR) LIKE ?
+                ORDER BY s.lastname ASC, s.firstname ASC
+                LIMIT 100";
+    } else {
+        $sql = "SELECT DISTINCT s.student_id, s.firstname, s.lastname, s.course, s.year_level, 
+                       s.email, s.contact, s.address,
+                       sl.username, sl.student_email
+                FROM students s
+                LEFT JOIN student_login sl ON sl.student_id = s.student_id
+                WHERE s.firstname LIKE ? 
+                   OR s.lastname LIKE ? 
+                   OR CONCAT(s.firstname, ' ', s.lastname) LIKE ?
+                   OR s.email LIKE ?
+                   OR COALESCE(s.contact, '') LIKE ?
+                   OR COALESCE(s.address, '') LIKE ?
+                   OR s.course LIKE ?
+                   OR s.year_level LIKE ?
+                   OR COALESCE(sl.username, '') LIKE ?
+                   OR COALESCE(sl.student_email, '') LIKE ?
+                   OR CAST(s.student_id AS CHAR) LIKE ?
+                ORDER BY s.lastname ASC, s.firstname ASC
+                LIMIT 100";
+    }
     
     $like = '%' . $q . '%';
     $stmt = $conn->prepare($sql);

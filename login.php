@@ -9,8 +9,8 @@
   <meta name="keywords" content="">
 
   <!-- Favicons -->
-  <link href="assets/img/favicon.png" rel="icon">
-  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+  <link href="assets/img/logo.png" rel="icon" type="image/png">
+  <link href="assets/img/logo.png" rel="apple-touch-icon">
 
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com" rel="preconnect">
@@ -91,8 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container-fluid container-xl position-relative d-flex align-items-center">
 
       <a href="index.php" class="logo d-flex align-items-center me-auto">
-        <!-- Uncomment the line below if you also wish to use an image logo -->
-        <!-- <img src="assets/img/logo.webp" alt=""> -->
+        <img src="assets/img/logo.png" alt="Bicol University Logo" style="height: 40px; margin-right: 10px;">
         <h1 class="sitename">BICOL UNIVERSITY</h1>
       </a>
 
@@ -183,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="input-with-icon">
                         <input type="password" id="password" name="password" placeholder="Enter your password" required>
                         <i class="fas fa-key input-icon"></i>
-                        <button type="button" class="toggle-password" id="togglePassword">
+                        <button type="button" class="toggle-password" id="togglePassword" onclick="togglePasswordVisibility('password', 'togglePassword')">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
@@ -272,6 +271,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <!-- Main JS File -->
   <script src="assets/js/main.js"></script>
+  
+  <script>
+    function togglePasswordVisibility(inputId, buttonId) {
+        const input = document.getElementById(inputId);
+        const button = document.getElementById(buttonId);
+        const icon = button.querySelector('i');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+  </script>
+  
+  <!-- Dark Mode JS -->
+  <script src="assets/js/dark-mode.js"></script>
 
 </body>
 

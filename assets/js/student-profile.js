@@ -38,9 +38,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Open avatar upload modal
     if (changeAvatarBtn) {
         changeAvatarBtn.addEventListener('click', function() {
-            avatarPreview.src = mainProfileAvatar.src;
+            if (avatarPreview && mainProfileAvatar) {
+                avatarPreview.src = mainProfileAvatar.src;
+            }
             selectedAvatarFile = null;
-            saveAvatarBtn.disabled = true;
+            if (saveAvatarBtn) {
+                saveAvatarBtn.disabled = false;
+                saveAvatarBtn.innerHTML = 'Save Changes';
+            }
+            if (avatarFileInput) {
+                avatarFileInput.value = '';
+            }
             avatarUploadModal.show();
         });
     }
@@ -68,8 +76,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const reader = new FileReader();
                 
                 reader.onload = function(e) {
-                    avatarPreview.src = e.target.result;
-                    saveAvatarBtn.disabled = false;
+                    if (avatarPreview) {
+                        avatarPreview.src = e.target.result;
+                    }
+                    if (saveAvatarBtn) {
+                        saveAvatarBtn.disabled = false;
+                        saveAvatarBtn.innerHTML = 'Save Changes';
+                    }
                 };
                 
                 reader.readAsDataURL(file);
@@ -86,26 +99,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Save avatar
-    if (saveAvatarBtn) {
-        saveAvatarBtn.addEventListener('click', function() {
-            const newAvatarSrc = avatarPreview.src;
-            
-            // Update all avatar images
-            mainProfileAvatar.src = newAvatarSrc;
-            profileAvatar.src = newAvatarSrc;
-            dropdownAvatar.src = newAvatarSrc;
-            
-            // Show success message
-            showToast('Profile picture updated successfully!', 'success');
-            
-            // Close modal
-            avatarUploadModal.hide();
-            
-            // Reset file input
-            if (avatarFileInput) {
-                avatarFileInput.value = '';
+    // Save avatar - ensure form submits properly
+    // The form will submit and PHP will handle the upload
+    const avatarUploadForm = document.getElementById('avatarUploadForm');
+    if (avatarUploadForm && saveAvatarBtn) {
+        // Don't prevent default - let form submit naturally
+        // Just ensure file is selected
+        avatarUploadForm.addEventListener('submit', function(e) {
+            if (!avatarFileInput || !avatarFileInput.files || !avatarFileInput.files[0]) {
+                e.preventDefault();
+                alert('Please select an image file first.');
+                return false;
             }
+            // Show loading state
+            saveAvatarBtn.disabled = true;
+            saveAvatarBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+            // Form will submit normally, PHP handles the rest
         });
     }
     
