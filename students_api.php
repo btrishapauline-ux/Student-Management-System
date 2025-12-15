@@ -2,6 +2,7 @@
 // REST-like endpoint for student CRUD and search
 session_start();
 require_once('db.php');
+require_once('notification_helper.php');
 
 header('Content-Type: application/json');
 
@@ -246,6 +247,19 @@ function create_student($conn) {
     }
     $newId = $conn->insert_id;
     $stmt->close();
+    
+    // Create notification for admin
+    if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin' && isset($_SESSION['user_id'])) {
+        $adminId = (int)$_SESSION['user_id'];
+        $studentName = $firstname . ' ' . $lastname;
+        create_notification(
+            $adminId,
+            'New Student Added',
+            "A new student has been added: {$studentName} ({$course}, {$year})",
+            'success'
+        );
+    }
+    
     json_response(['success' => true, 'data' => ['student_id' => $newId]]);
 }
 
@@ -355,6 +369,18 @@ function update_student($conn) {
         }
     }
     
+    // Create notification for admin
+    if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin' && isset($_SESSION['user_id'])) {
+        $adminId = (int)$_SESSION['user_id'];
+        $studentName = $firstname . ' ' . $lastname;
+        create_notification(
+            $adminId,
+            'Student Profile Updated',
+            "Student profile has been updated: {$studentName} (ID: {$id})",
+            'info'
+        );
+    }
+    
     json_response(['success' => true]);
 }
 
@@ -363,6 +389,21 @@ function delete_student($conn) {
     if ($id <= 0) {
         json_response(['success' => false, 'message' => 'Invalid student id'], 400);
     }
+    
+    // Get student info before deleting for notification
+    $getStudentSql = "SELECT firstname, lastname FROM students WHERE student_id = ?";
+    $getStmt = $conn->prepare($getStudentSql);
+    $studentName = 'Unknown';
+    if ($getStmt) {
+        $getStmt->bind_param('i', $id);
+        $getStmt->execute();
+        $result = $getStmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $studentName = ($row['firstname'] ?? '') . ' ' . ($row['lastname'] ?? '');
+        }
+        $getStmt->close();
+    }
+    
     $sql = "DELETE FROM students WHERE student_id = ?";
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
@@ -374,6 +415,18 @@ function delete_student($conn) {
     if (!$ok) {
         json_response(['success' => false, 'message' => 'Delete failed: ' . $conn->error], 500);
     }
+    
+    // Create notification for admin
+    if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin' && isset($_SESSION['user_id'])) {
+        $adminId = (int)$_SESSION['user_id'];
+        create_notification(
+            $adminId,
+            'Student Deleted',
+            "Student record has been deleted: {$studentName} (ID: {$id})",
+            'warning'
+        );
+    }
+    
     json_response(['success' => true]);
 }
 

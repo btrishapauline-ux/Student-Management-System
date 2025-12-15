@@ -2,6 +2,7 @@
 // Basic session + DB setup
 session_start();
 require_once('db.php');
+require_once('notification_helper.php');
 
 // Redirect if not logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'student') {
@@ -53,6 +54,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_image'])) {
                 if ($updateStmt->execute()) {
                     $uploadSuccess = true;
                     $uploadMessage = 'Profile picture updated successfully!';
+                    
+                    // Create notification for all admins about profile image update
+                    $getStudentSql = "SELECT firstname, lastname FROM students WHERE student_id = ?";
+                    $getStmt = $conn->prepare($getStudentSql);
+                    $studentName = 'Student';
+                    if ($getStmt) {
+                        $getStmt->bind_param('i', $studentId);
+                        $getStmt->execute();
+                        $result = $getStmt->get_result();
+                        if ($row = $result->fetch_assoc()) {
+                            $studentName = ($row['firstname'] ?? '') . ' ' . ($row['lastname'] ?? '');
+                        }
+                        $getStmt->close();
+                    }
+                    create_notification_for_all_admins(
+                        'Student Profile Image Updated',
+                        "Student {$studentName} (ID: {$studentId}) has updated their profile picture.",
+                        'info'
+                    );
+                    
                     // Redirect to avoid resubmission on refresh
                     header('Location: profile.php?upload=success');
                     exit();

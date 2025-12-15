@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once('db.php');
+require_once('notification_helper.php');
 
 // Enable all errors for debugging
 ini_set('display_errors', 1);
@@ -169,6 +170,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // Success!
         echo "\n✓ Both inserts successful!\n";
         echo "</pre>";
+        
+        // Create notification for all admins about new student registration
+        $studentName = $firstname . ' ' . $lastname;
+        create_notification_for_all_admins(
+            'New Student Registration',
+            "A new student has registered: {$studentName} ({$course}, {$year_level}). Student ID: {$student_id_num}",
+            'info'
+        );
         
         $_SESSION['user_id'] = $new_student_id;
         $_SESSION['user_type'] = 'student';

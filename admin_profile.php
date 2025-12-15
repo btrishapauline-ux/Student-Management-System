@@ -1,141 +1,324 @@
 <?php
-// Display errors for debugging (REMOVE THIS LINE ON A LIVE SERVER when done)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Basic session + DB setup
+session_start();
+require_once('db.php');
 
-// Require session to ensure only admin can access
-require_once('session.php');
-require_once('db.php'); 
-
-if (!isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'admin') {
-    header("location: admin_login.php");
+// Redirect if not logged in as admin
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'admin') {
+    header('Location: admin_login.php');
     exit();
 }
 
-// Initialize count variable
-$totalStudents = 0;
+$adminId = (int)$_SESSION['user_id'];
 
-// Check if the connection worked
-if (isset($conn) && $conn->connect_error) {
-    // If connection failed, assign the error message
-    $totalStudents = "CONN ERROR: " . $conn->connect_error; 
-} else if (isset($conn)) {
-    // 2. Prepare and Execute the SQL COUNT statement
-    // Counts rows in the 'students' table
-    $sql_count = "SELECT COUNT(student_id) AS total_students FROM students";
-    $result = $conn->query($sql_count);
+// Initialize $fullName early to avoid undefined variable warning
+$fullName = 'Administrator';
+
+// Handle profile image upload
+$uploadMessage = '';
+$uploadSuccess = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_image'])) {
+    // Check if profile_image column exists, create if it doesn't
+    $checkColumnSql = "SHOW COLUMNS FROM admin LIKE 'profile_image'";
+    $checkResult = $conn->query($checkColumnSql);
+    $columnExists = ($checkResult && $checkResult->num_rows > 0);
     
-    // 3. Check for SQL query failure
-    if ($result === false) {
-        $totalStudents = "DB ERROR: " . $conn->error;
-    } else {
-        // 4. Fetch the result successfully
-        $row = $result->fetch_assoc();
-        // $totalStudents will now hold the number (e.g., 10)
-        $totalStudents = $row['total_students'];
+    // Create column if it doesn't exist
+    if (!$columnExists) {
+        $createColumnSql = "ALTER TABLE admin ADD COLUMN profile_image LONGTEXT";
+        $conn->query($createColumnSql);
+        $columnExists = true;
     }
-} else {
-    // Fallback if $conn is not set, likely due to error in db.php
-    $totalStudents = "FATAL ERROR: Database connection object not found.";
+    
+    if ($_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        $fileType = $_FILES['profile_image']['type'];
+        $fileSize = $_FILES['profile_image']['size'];
+        $maxSize = 5 * 1024 * 1024; // 5MB
+        
+        // Validate file size
+        if ($fileSize > $maxSize) {
+            $uploadMessage = 'File size exceeds 5MB limit.';
+        } elseif (in_array($fileType, $allowedTypes)) {
+            // Read image file and convert to base64
+            $imageData = file_get_contents($_FILES['profile_image']['tmp_name']);
+            $imageBase64 = base64_encode($imageData);
+            
+            // Update database with base64 encoded image
+            $updateSql = "UPDATE admin SET profile_image = ? WHERE admin_id = ?";
+            $updateStmt = $conn->prepare($updateSql);
+            if ($updateStmt) {
+                $updateStmt->bind_param('si', $imageBase64, $adminId);
+                if ($updateStmt->execute()) {
+                    $uploadSuccess = true;
+                    $uploadMessage = 'Profile picture updated successfully!';
+                    // Redirect to avoid resubmission on refresh
+                    header('Location: admin_profile.php?upload=success');
+                    exit();
+                } else {
+                    $uploadMessage = 'Failed to update profile picture.';
+                }
+                $updateStmt->close();
+            } else {
+                $uploadMessage = 'Database error occurred.';
+            }
+        } else {
+            $uploadMessage = 'Invalid file type. Please upload JPG, PNG, or GIF images only.';
+        }
+    } elseif ($_FILES['profile_image']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $uploadMessage = 'Error uploading file. Please try again.';
+    }
 }
-?>
 
+// Load current admin info
+$admin = [
+    'full_name' => '',
+    'username' => '',
+    'email' => '',
+    'contact' => '',
+    'department' => '',
+    'position' => '',
+    'profile_image' => ''
+];
+
+// Check if profile_image column exists
+$checkColumnSql = "SHOW COLUMNS FROM admin LIKE 'profile_image'";
+$columnExists = false;
+$checkResult = $conn->query($checkColumnSql);
+if ($checkResult && $checkResult->num_rows > 0) {
+    $columnExists = true;
+}
+
+// Check which columns exist in the admin table (whitelist approach for safety)
+$allowedColumns = ['full_name', 'email', 'contact', 'department', 'position'];
+$existingColumns = [];
+
+foreach ($allowedColumns as $col) {
+    // SHOW COLUMNS doesn't support prepared statements, but we're using a whitelist so it's safe
+    $escapedCol = $conn->real_escape_string($col);
+    $checkColSql = "SHOW COLUMNS FROM admin LIKE '{$escapedCol}'";
+    $checkColResult = $conn->query($checkColSql);
+    if ($checkColResult && $checkColResult->num_rows > 0) {
+        $existingColumns[] = $col;
+    }
+}
+
+if ($columnExists) {
+    $existingColumns[] = 'profile_image';
+}
+
+// Ensure we have at least full_name
+if (empty($existingColumns) || !in_array('full_name', $existingColumns)) {
+    $existingColumns = ['full_name'];
+}
+
+// Build SQL query with only existing columns
+$selectFields = implode(', ', array_map(function($col) {
+    return "a.`{$col}`";
+}, $existingColumns));
+
+// Always try to get username from admin_login
+$sql = "SELECT {$selectFields}, al.username
+        FROM admin a
+        LEFT JOIN admin_login al ON al.admin_id = a.admin_id
+        WHERE a.admin_id = ?";
+
+$stmt = $conn->prepare($sql);
+if ($stmt) {
+    $stmt->bind_param('i', $adminId);
+    if ($stmt->execute()) {
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $admin['full_name'] = $row['full_name'] ?? '';
+            $admin['username'] = $row['username'] ?? '';
+            $admin['email'] = $row['email'] ?? '';
+            $admin['contact'] = $row['contact'] ?? '';
+            $admin['department'] = $row['department'] ?? '';
+            $admin['position'] = $row['position'] ?? '';
+            $admin['profile_image'] = ($columnExists && isset($row['profile_image'])) ? $row['profile_image'] : '';
+            
+            // Set fullName after loading data
+            $fullName = htmlspecialchars(trim($admin['full_name']));
+            if (empty(trim($fullName))) {
+                $fullName = 'Administrator';
+            }
+        }
+    }
+    $stmt->close();
+} else {
+    // Fallback: try a simpler query with just full_name
+    $fallbackSql = "SELECT a.full_name, al.username FROM admin a LEFT JOIN admin_login al ON al.admin_id = a.admin_id WHERE a.admin_id = ?";
+    $fallbackStmt = $conn->prepare($fallbackSql);
+    if ($fallbackStmt) {
+        $fallbackStmt->bind_param('i', $adminId);
+        if ($fallbackStmt->execute()) {
+            $fallbackResult = $fallbackStmt->get_result();
+            if ($row = $fallbackResult->fetch_assoc()) {
+                $admin['full_name'] = $row['full_name'] ?? '';
+                $admin['username'] = $row['username'] ?? '';
+                $fullName = htmlspecialchars(trim($admin['full_name']));
+                if (empty(trim($fullName))) {
+                    $fullName = 'Administrator';
+                }
+            }
+        }
+        $fallbackStmt->close();
+    }
+}
+
+// Helper function to get profile image src
+function getProfileImageSrc($profileImage) {
+    if (!empty($profileImage)) {
+        return 'data:image/jpeg;base64,' . $profileImage;
+    }
+    // Fallback to a default avatar or use a placeholder
+    if (file_exists('assets/img/admin-avatar.jpg')) {
+        return 'assets/img/admin-avatar.jpg';
+    }
+    // Use a data URI for a simple placeholder if image doesn't exist
+    return 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150"><rect fill="#ddd" width="150" height="150"/><text fill="#999" font-family="Arial" font-size="50" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">Admin</text></svg>');
+}
+$profileImageSrc = getProfileImageSrc($admin['profile_image']);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>Admin Dashboard | Student Management</title>
-    <meta name="description" content="Student Management Admin Dashboard">
-    <meta name="keywords" content="admin, student, management, dashboard">
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Admin Profile | Bicol University</title>
+  <meta name="description" content="Admin Profile Dashboard">
+  <meta name="keywords" content="admin, profile, dashboard, university">
 
-    <link href="assets/img/logo.png" rel="icon" type="image/png">
-    <link href="assets/img/logo.png" rel="apple-touch-icon">
+  <!-- Favicons -->
+  <link href="assets/img/favicon.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
 
-    <link href="https://fonts.googleapis.com" rel="preconnect">
-    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Jost:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Jost:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-    <link href="assets/vendor/aos/aos.css" rel="stylesheet">
-    <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
 
-    <link href="assets/css/main.css" rel="stylesheet">
-    
-    <link href="assets/css/student-profile.css" rel="stylesheet">
-    
-    <link href="assets/css/admin.css" rel="stylesheet">
-    
-    <!-- Dark Mode CSS -->
-    <link href="assets/css/dark-mode.css" rel="stylesheet">
+  <!-- Main CSS File -->
+  <link href="assets/css/main.css" rel="stylesheet">
+  
+  <!-- Student Profile CSS (reused for admin) -->
+  <link href="assets/css/student-profile.css" rel="stylesheet">
+  
+  <!-- Dark Mode CSS -->
+  <link href="assets/css/dark-mode.css" rel="stylesheet">
+  
+  <!-- Notifications CSS -->
+  <link href="assets/css/notifications.css" rel="stylesheet">
 </head>
 
-<body class="admin-page">
+<body class="student-profile-page admin-profile-page">
 
-    <header id="header" class="header d-flex align-items-center fixed-top">
-        <div class="container-fluid container-xl position-relative d-flex align-items-center">
+  <!-- Header -->
+  <header id="header" class="header d-flex align-items-center fixed-top">
+    <div class="container-fluid container-xl position-relative d-flex align-items-center">
 
-            <a href="index.php" class="logo d-flex align-items-center me-auto">
-                <img src="assets/img/logo.png" alt="Bicol University Logo" style="height: 40px; margin-right: 10px;">
-                <h1 class="sitename">BICOL UNIVERSITY</h1>
-            </a>
+      <!-- Logo -->
+      <a href="index.php" class="logo d-flex align-items-center me-auto">
+        <img src="assets/img/logo.png" alt="Bicol University Logo" style="height: 40px; margin-right: 10px;">
+        <h1 class="sitename">BICOL UNIVERSITY</h1>
+      </a>
 
-            <nav id="navmenu" class="navmenu">
-                <ul>
+      <!-- Navigation Menu -->
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="admin.php">Dashboard</a></li>
+          <li><a href="admin_profile.php" class="active">Profile</a></li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      </nav>
 
-                   
-                </ul>
-                <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
-            </nav>
-
-            <div class="profile-dropdown">
-                <div class="profile-trigger" id="profileTrigger">
-                    <div class="profile-avatar">
-                        <img src="assets/img/admin-avatar.jpg" alt="Admin Avatar" id="profileAvatar">
-                    </div>
-                    <div class="profile-info">
-                        <span class="profile-name" id="profileName">Admin User</span>
-                        <span class="profile-role">Administrator</span>
-                    </div>
-                    <i class="bi bi-chevron-down"></i>
-                </div>
-                
-                <div class="profile-dropdown-menu" id="profileDropdown">
-                    <div class="dropdown-header">
-                        <img src="assets/img/admin-avatar.jpg" alt="Admin Avatar" id="dropdownAvatar">
-                        <div>
-                            <h6 id="dropdownName">Admin User</h6>
-                            <span>System Administrator</span>
-                        </div>
-                    </div>
-                    <div class="dropdown-divider"></div>
-                    <a href="admin.php" class="dropdown-item">
-                        <i class="bi bi-speedometer2"></i> Admin Dashboard
-                    </a>
-                    <a href="admin_profile.php" class="dropdown-item">
-                        <i class="bi bi-speedometer2"></i> Admin Profile
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a href="logout.php" class="dropdown-item">
-                        <i class="bi bi-box-arrow-right"></i> Logout
-                    </a>
-                </div>
-            </div>
-
+      <!-- Notification Bell Container -->
+      <div class="notification-bell-container">
+        <div class="notification-bell" id="notificationBell">
+          <i class="bi bi-bell"></i>
+          <span class="notification-badge" id="notificationBadge">0</span>
         </div>
-    </header>
 
-    
+        <!-- Notification Dropdown -->
+        <div class="notification-dropdown" id="notificationDropdown">
+        <div class="notification-dropdown-header">
+          <h5>Notifications</h5>
+          <div class="notification-dropdown-actions">
+            <button class="btn-notification-header" id="markAllReadBtn" title="Mark all as read">
+              <i class="bi bi-check-all"></i>
+            </button>
+            <button class="btn-notification-header" id="clearAllNotificationsBtn" title="Clear all">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div class="notification-list" id="notificationList">
+          <div class="notification-empty">
+            <i class="bi bi-bell-slash"></i>
+            <p>Loading notifications...</p>
+          </div>
+        </div>
+        <div class="notification-dropdown-footer">
+          <button class="btn-view-all" onclick="notificationSystem.loadNotifications()">
+            Refresh
+          </button>
+        </div>
+      </div>
+      </div>
+
+      <!-- Profile Dropdown -->
+      <div class="profile-dropdown">
+        <div class="profile-trigger" id="profileTrigger">
+          <div class="profile-avatar">
+            <img src="<?php echo htmlspecialchars($profileImageSrc); ?>" alt="Admin Avatar" id="profileAvatar">
+          </div>
+          <div class="profile-info">
+            <span class="profile-name" id="profileName"><?php echo $fullName ?: 'Administrator'; ?></span>
+            <span class="profile-role">Administrator</span>
+          </div>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        
+        <div class="profile-dropdown-menu" id="profileDropdown">
+          <div class="dropdown-header">
+            <img src="<?php echo htmlspecialchars($profileImageSrc); ?>" alt="Admin Avatar" id="dropdownAvatar">
+            <div>
+              <h6 id="dropdownName"><?php echo $fullName ?: 'Administrator'; ?></h6>
+              <span><?php echo htmlspecialchars($admin['position'] ?: 'System Administrator'); ?></span>
+            </div>
+          </div>
+          <div class="dropdown-divider"></div>
+          <a href="admin_profile.php" class="dropdown-item">
+            <i class="bi bi-person"></i> My Profile
+          </a>
+          <a href="admin.php" class="dropdown-item">
+            <i class="bi bi-speedometer2"></i> Dashboard
+          </a>
+          <div class="dropdown-divider"></div>
+          <a href="logout.php" class="dropdown-item">
+            <i class="bi bi-box-arrow-right"></i> Logout
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
   <!-- Main Content -->
   <main class="main">
     <!-- Profile Content Section -->
     <section class="profile-content section">
       <div class="container">
-        <?php $fullName = htmlspecialchars(trim($student['firstname'] . ' ' . $student['lastname'])); ?>
-
         <!-- Upload Success/Error Message -->
         <?php if (isset($_GET['upload']) && $_GET['upload'] === 'success'): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -147,19 +330,6 @@ if (isset($conn) && $conn->connect_error) {
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
           <i class="bi bi-exclamation-circle"></i> <?php echo htmlspecialchars($uploadMessage); ?>
           <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        <?php endif; ?>
-
-        <!-- Profile Completion Notice -->
-        <?php if (!$student['date_of_birth'] && !$student['gender'] && !$student['emergency_contact_name']): ?>
-        <div class="alert alert-info mb-4 d-flex align-items-center justify-content-between">
-          <div>
-            <i class="bi bi-info-circle"></i> <strong>Complete Your Profile</strong>
-            <p class="mb-0 mt-1">Please complete your profile information to access all features.</p>
-          </div>
-          <a href="setprofile.php" class="btn btn-primary">
-            <i class="bi bi-person-check"></i> Complete Profile
-          </a>
         </div>
         <?php endif; ?>
         
@@ -178,24 +348,28 @@ if (isset($conn) && $conn->connect_error) {
             
             <!-- Profile Info -->
             <div class="profile-info-main">
-              <h1 class="student-name" id="mainProfileName"><?php echo $fullName ?: 'Student'; ?></h1>
-              <p class="student-id">Student ID: <?php echo htmlspecialchars($student['username']); ?></p>
+              <h1 class="student-name" id="mainProfileName"><?php echo $fullName ?: 'Administrator'; ?></h1>
+              <p class="student-id">Admin ID: <?php echo htmlspecialchars($admin['username'] ?: 'N/A'); ?></p>
               <div class="program-badges">
-                <span class="program-badge"><?php echo htmlspecialchars($student['course']); ?></span>
-                <span class="year-badge"><?php echo htmlspecialchars($student['year_level']); ?></span>
+                <?php if ($admin['position']): ?>
+                <span class="program-badge"><?php echo htmlspecialchars($admin['position']); ?></span>
+                <?php endif; ?>
+                <?php if ($admin['department']): ?>
+                <span class="year-badge"><?php echo htmlspecialchars($admin['department']); ?></span>
+                <?php endif; ?>
               </div>
             </div>
           </div>
           
-          <!-- Progress Section -->
+          <!-- Admin Stats Section -->
           <div class="progress-section">
-            <h4>Program Progress</h4>
+            <h4>System Overview</h4>
             <div class="progress-bar-container">
-              <div class="progress-bar" style="width: 65%;"></div>
+              <div class="progress-bar" style="width: 85%;"></div>
             </div>
             <div class="progress-text">
-              <span>65% Complete</span>
-              <span>78 of 120 credits</span>
+              <span>85% System Health</span>
+              <span>All systems operational</span>
             </div>
           </div>
         </div>
@@ -213,18 +387,13 @@ if (isset($conn) && $conn->connect_error) {
                   </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="academic-tab" data-bs-toggle="tab" data-bs-target="#academic" type="button">
-                    <i class="bi bi-journal-bookmark"></i> Academic
-                  </button>
-                </li>
-                <li class="nav-item" role="presentation">
                   <button class="nav-link" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact-info" type="button">
                     <i class="bi bi-telephone"></i> Contact
                   </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button">
-                    <i class="bi bi-folder"></i> Documents
+                  <button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin-info" type="button">
+                    <i class="bi bi-shield-check"></i> Admin Details
                   </button>
                 </li>
               </ul>
@@ -240,55 +409,40 @@ if (isset($conn) && $conn->connect_error) {
                     <h5>Personal Information</h5>
                     <div class="info-item">
                       <label>FULL NAME</label>
-                      <p id="infoFullName"><?php echo $fullName ?: 'Student'; ?></p>
+                      <p id="infoFullName"><?php echo $fullName ?: 'Administrator'; ?></p>
                     </div>
                     <div class="info-item">
-                      <label>DATE OF BIRTH</label>
-                      <p id="infoDob"><?php echo $student['date_of_birth'] ? date('F d, Y', strtotime($student['date_of_birth'])) : '—'; ?></p>
+                      <label>ADMIN ID</label>
+                      <p id="infoAdminId"><?php echo htmlspecialchars($admin['username'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
-                      <label>GENDER</label>
-                      <p id="infoGender"><?php echo htmlspecialchars($student['gender'] ?: '—'); ?></p>
+                      <label>POSITION</label>
+                      <p id="infoPosition"><?php echo htmlspecialchars($admin['position'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
-                      <label>ADDRESS</label>
-                      <p id="infoAddress"><?php echo htmlspecialchars($student['address'] ?: '—'); ?></p>
+                      <label>DEPARTMENT</label>
+                      <p id="infoDepartment"><?php echo htmlspecialchars($admin['department'] ?: '—'); ?></p>
                     </div>
                   </div>
                   
                   <div class="info-card">
-                    <h5>Additional Details</h5>
+                    <h5>Account Information</h5>
                     <div class="info-item">
-                      <label>NATIONALITY</label>
-                      <p id="infoNationality"><?php echo htmlspecialchars($student['nationality'] ?: '—'); ?></p>
+                      <label>EMAIL ADDRESS</label>
+                      <p id="infoEmail"><?php echo htmlspecialchars($admin['email'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
-                      <label>MARITAL STATUS</label>
-                      <p id="infoMaritalStatus"><?php echo htmlspecialchars($student['marital_status'] ?: '—'); ?></p>
+                      <label>PHONE NUMBER</label>
+                      <p id="infoPhone"><?php echo htmlspecialchars($admin['contact'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
-                      <label>BLOOD TYPE</label>
-                      <p id="infoBloodType"><?php echo htmlspecialchars($student['blood_type'] ?: '—'); ?></p>
+                      <label>ACCOUNT TYPE</label>
+                      <p class="text-success">Administrator ✓</p>
                     </div>
                     <div class="info-item">
-                      <label>EMERGENCY CONTACT</label>
-                      <p id="infoEmergencyContact">
-                        <?php if ($student['emergency_contact_name']): ?>
-                          <?php echo htmlspecialchars($student['emergency_contact_name']); ?>
-                          <?php if ($student['emergency_contact_relationship']): ?>
-                            <br><small class="text-muted">(<?php echo htmlspecialchars($student['emergency_contact_relationship']); ?>)</small>
-                          <?php endif; ?>
-                          <?php if ($student['emergency_contact_phone']): ?>
-                            <br><small class="text-muted"><?php echo htmlspecialchars($student['emergency_contact_phone']); ?></small>
-                          <?php endif; ?>
-                        <?php else: ?>
-                          —
-                        <?php endif; ?>
-                      </p>
+                      <label>ACCOUNT STATUS</label>
+                      <p class="text-success">Active ✓</p>
                     </div>
-                    <a href="setprofile.php" class="btn btn-primary btn-sm mt-3">
-                      <i class="bi bi-pencil"></i> Edit Information
-                    </a>
                   </div>
                 </div>
                 
@@ -298,77 +452,32 @@ if (isset($conn) && $conn->connect_error) {
                   <div class="activity-list">
                     <div class="activity-item">
                       <div class="activity-icon blue">
-                        <i class="bi bi-check-circle"></i>
+                        <i class="bi bi-person-plus"></i>
                       </div>
                       <div class="activity-content">
-                        <h6>Enrolled in "Data Structures" course</h6>
+                        <h6>Added new student record</h6>
                         <small>Today, 10:30 AM</small>
                       </div>
                     </div>
                     
                     <div class="activity-item">
                       <div class="activity-icon green">
-                        <i class="bi bi-arrow-up-circle"></i>
+                        <i class="bi bi-pencil"></i>
                       </div>
                       <div class="activity-content">
-                        <h6>Submitted assignment for Algorithms</h6>
+                        <h6>Updated student information</h6>
                         <small>Yesterday, 3:45 PM</small>
                       </div>
                     </div>
                     
                     <div class="activity-item">
                       <div class="activity-icon orange">
-                        <i class="bi bi-calendar-check"></i>
+                        <i class="bi bi-shield-check"></i>
                       </div>
                       <div class="activity-content">
-                        <h6>Upcoming exam: Database Systems</h6>
-                        <small>March 25, 2024 • 2 days from now</small>
+                        <h6>System backup completed</h6>
+                        <small>March 25, 2024 • 2 days ago</small>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Academic Information Tab -->
-              <div class="tab-pane fade" id="academic" role="tabpanel">
-                <div class="info-grid">
-                  <div class="info-card">
-                    <h5>Academic Information</h5>
-                    <div class="info-item">
-                      <label>STUDENT ID</label>
-                      <p><?php echo htmlspecialchars($student['username']); ?></p>
-                    </div>
-                    <div class="info-item">
-                      <label>PROGRAM</label>
-                      <p><?php echo htmlspecialchars($student['course']); ?></p>
-                    </div>
-                    <div class="info-item">
-                      <label>YEAR LEVEL</label>
-                      <p><?php echo htmlspecialchars($student['year_level']); ?></p>
-                    </div>
-                    <div class="info-item">
-                      <label>COLLEGE</label>
-                      <p>College of Science</p>
-                    </div>
-                  </div>
-                  
-                  <div class="info-card">
-                    <h5>Academic Status</h5>
-                    <div class="info-item">
-                      <label>CURRENT GPA</label>
-                      <p>3.85 / 4.0</p>
-                    </div>
-                    <div class="info-item">
-                      <label>TOTAL CREDITS</label>
-                      <p>78 credits completed</p>
-                    </div>
-                    <div class="info-item">
-                      <label>ACADEMIC STANDING</label>
-                      <p class="text-success">Good Standing ✓</p>
-                    </div>
-                    <div class="info-item">
-                      <label>SCHOLARSHIP</label>
-                      <p>Academic Excellence Scholarship</p>
                     </div>
                   </div>
                 </div>
@@ -381,86 +490,70 @@ if (isset($conn) && $conn->connect_error) {
                     <h5>Contact Information</h5>
                     <div class="info-item">
                       <label>EMAIL ADDRESS</label>
-                      <p id="infoEmail"><?php echo htmlspecialchars($student['email']); ?></p>
+                      <p id="infoEmail"><?php echo htmlspecialchars($admin['email'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
                       <label>PHONE NUMBER</label>
-                      <p id="infoPhone"><?php echo htmlspecialchars($student['contact'] ?: '—'); ?></p>
+                      <p id="infoPhone"><?php echo htmlspecialchars($admin['contact'] ?: '—'); ?></p>
                     </div>
                   </div>
                   
                   <div class="info-card">
-                    <h5>Emergency Contact</h5>
+                    <h5>Office Information</h5>
                     <div class="info-item">
-                      <label>CONTACT PERSON</label>
-                      <p id="infoEmergencyContact"><?php echo htmlspecialchars($student['emergency_contact_name'] ?: '—'); ?></p>
+                      <label>DEPARTMENT</label>
+                      <p id="infoDepartment"><?php echo htmlspecialchars($admin['department'] ?: '—'); ?></p>
                     </div>
                     <div class="info-item">
-                      <label>RELATIONSHIP</label>
-                      <p><?php echo htmlspecialchars($student['emergency_contact_relationship'] ?: '—'); ?></p>
+                      <label>POSITION</label>
+                      <p id="infoPosition"><?php echo htmlspecialchars($admin['position'] ?: '—'); ?></p>
                     </div>
-                    <div class="info-item">
-                      <label>PHONE NUMBER</label>
-                      <p id="infoEmergencyPhone"><?php echo htmlspecialchars($student['emergency_contact_phone'] ?: '—'); ?></p>
-                    </div>
-                    <a href="setprofile.php" class="btn btn-primary btn-sm mt-3">
-                      <i class="bi bi-pencil"></i> Edit Contact
-                    </a>
                   </div>
                 </div>
               </div>
               
-              <!-- Documents Tab -->
-              <div class="tab-pane fade" id="documents" role="tabpanel">
-                <div class="document-list">
-                  <div class="document-item">
-                    <div class="document-icon pdf">
-                      <i class="bi bi-file-earmark-pdf"></i>
+              <!-- Admin Details Tab -->
+              <div class="tab-pane fade" id="admin-info" role="tabpanel">
+                <div class="info-grid">
+                  <div class="info-card">
+                    <h5>Administrative Information</h5>
+                    <div class="info-item">
+                      <label>ADMIN ID</label>
+                      <p><?php echo htmlspecialchars($admin['username'] ?: '—'); ?></p>
                     </div>
-                    <div class="document-info">
-                      <h6>Transcript of Records</h6>
-                      <small>Uploaded: Jan 15, 2024 • Size: 2.4 MB</small>
+                    <div class="info-item">
+                      <label>POSITION</label>
+                      <p><?php echo htmlspecialchars($admin['position'] ?: '—'); ?></p>
                     </div>
-                    <div class="document-actions">
-                      <button class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-download"></i>
-                      </button>
+                    <div class="info-item">
+                      <label>DEPARTMENT</label>
+                      <p><?php echo htmlspecialchars($admin['department'] ?: '—'); ?></p>
                     </div>
-                  </div>
-                  
-                  <div class="document-item">
-                    <div class="document-icon image">
-                      <i class="bi bi-file-earmark-image"></i>
-                    </div>
-                    <div class="document-info">
-                      <h6>ID Picture</h6>
-                      <small>Uploaded: Dec 10, 2023 • Size: 1.2 MB</small>
-                    </div>
-                    <div class="document-actions">
-                      <button class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-download"></i>
-                      </button>
+                    <div class="info-item">
+                      <label>ACCESS LEVEL</label>
+                      <p class="text-success">Full Administrator Access ✓</p>
                     </div>
                   </div>
                   
-                  <div class="document-item">
-                    <div class="document-icon word">
-                      <i class="bi bi-file-earmark-word"></i>
+                  <div class="info-card">
+                    <h5>System Access</h5>
+                    <div class="info-item">
+                      <label>PERMISSIONS</label>
+                      <p>Student Management, System Settings, Reports</p>
                     </div>
-                    <div class="document-info">
-                      <h6>Application Form</h6>
-                      <small>Uploaded: Aug 5, 2023 • Size: 850 KB</small>
+                    <div class="info-item">
+                      <label>LAST LOGIN</label>
+                      <p>Today, 09:15 AM</p>
                     </div>
-                    <div class="document-actions">
-                      <button class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-download"></i>
-                      </button>
+                    <div class="info-item">
+                      <label>ACCOUNT CREATED</label>
+                      <p>January 15, 2024</p>
+                    </div>
+                    <div class="info-item">
+                      <label>ACCOUNT STATUS</label>
+                      <p class="text-success">Active ✓</p>
                     </div>
                   </div>
-                  
-                  <button class="btn btn-primary btn-sm mt-3">
-                    <i class="bi bi-cloud-upload"></i> Upload Document
-                  </button>
                 </div>
               </div>
             </div>
@@ -473,90 +566,69 @@ if (isset($conn) && $conn->connect_error) {
             <div class="sidebar-section">
               <h4>Quick Actions</h4>
               <div class="quick-actions-list">
-                <a href="course.php" class="quick-action-btn text-decoration-none">
-                  <i class="bi bi-journal-text"></i>
-                  <span>View Courses</span>
-                </a>
-                
-                <a href="grade.php" class="quick-action-btn text-decoration-none">
-                  <i class="bi bi-graph-up"></i>
-                  <span>Check Grades</span>
-                </a>
-                
-                <a href="schedule.php" class="quick-action-btn text-decoration-none">
-                  <i class="bi bi-calendar-week"></i>
-                  <span>View Schedule</span>
+                <a href="admin.php" class="quick-action-btn text-decoration-none">
+                  <i class="bi bi-speedometer2"></i>
+                  <span>Dashboard</span>
                 </a>
                 
                 <button class="quick-action-btn" id="printProfileBtn">
                   <i class="bi bi-printer"></i>
                   <span>Print Profile</span>
                 </button>
+                
+                <button class="quick-action-btn" id="exportDataBtn">
+                  <i class="bi bi-download"></i>
+                  <span>Export Data</span>
+                </button>
               </div>
             </div>
             
-            <!-- Upcoming Events -->
+            <!-- System Status -->
             <div class="sidebar-section">
-              <h4>Upcoming Events</h4>
-              <div class="event-list">
-                <div class="event-item">
-                  <div class="event-date">
-                    <span class="event-day">25</span>
-                    <span class="event-month">MAR</span>
-                  </div>
-                  <div class="event-details">
-                    <h6>Midterm Exams Begin</h6>
-                    <small>All Departments</small>
-                  </div>
+              <h4>System Status</h4>
+              <div class="system-status">
+                <div class="status-item">
+                  <span class="status-label">Database</span>
+                  <span class="status-value online">Online</span>
                 </div>
-                
-                <div class="event-item">
-                  <div class="event-date">
-                    <span class="event-day">05</span>
-                    <span class="event-month">APR</span>
-                  </div>
-                  <div class="event-details">
-                    <h6>University Foundation Day</h6>
-                    <small>No Classes</small>
-                  </div>
+                <div class="status-item">
+                  <span class="status-label">Storage</span>
+                  <span class="status-value">65% Used</span>
                 </div>
-                
-                <div class="event-item">
-                  <div class="event-date">
-                    <span class="event-day">15</span>
-                    <span class="event-month">APR</span>
-                  </div>
-                  <div class="event-details">
-                    <h6>Final Submission Deadline</h6>
-                    <small>Research Papers</small>
-                  </div>
+                <div class="status-item">
+                  <span class="status-label">Last Backup</span>
+                  <span class="status-value">Today, 02:00 AM</span>
+                </div>
+                <div class="status-item">
+                  <span class="status-label">Active Sessions</span>
+                  <span class="status-value">3</span>
                 </div>
               </div>
             </div>
             
             <!-- Important Contacts -->
             <div class="sidebar-section">
-              <h4>Important Contacts</h4>
+              <h4>Support Contacts</h4>
               <div class="contact-list">
-                <div class="contact-item">
-                  <div class="contact-icon">
-                    <i class="bi bi-person-badge"></i>
-                  </div>
-                  <div class="contact-info">
-                    <h6>Academic Advisor</h6>
-                    <small>Dr. Maria Santos</small>
-                    <small>maria.santos@bicol-u.edu.ph</small>
-                  </div>
-                </div>
-                
                 <div class="contact-item">
                   <div class="contact-icon">
                     <i class="bi bi-headset"></i>
                   </div>
                   <div class="contact-info">
-                    <h6>Student Support</h6>
+                    <h6>IT Support</h6>
                     <small>(052) 742-1234</small>
                     <small>support@bicol-u.edu.ph</small>
+                  </div>
+                </div>
+                
+                <div class="contact-item">
+                  <div class="contact-icon">
+                    <i class="bi bi-shield-check"></i>
+                  </div>
+                  <div class="contact-info">
+                    <h6>Security</h6>
+                    <small>(052) 742-5678</small>
+                    <small>security@bicol-u.edu.ph</small>
                   </div>
                 </div>
               </div>
@@ -567,402 +639,126 @@ if (isset($conn) && $conn->connect_error) {
     </section>
   </main>
 
-    <footer id="footer" class="footer">
-        <div class="container copyright text-center mt-4">
-            <p>© <span>Copyright</span> <strong class="px-1 sitename">Bicol University</strong> <span>All Rights Reserved</span></p>
-            <div class="credits">
-                Student Management System v2.0 | Admin Dashboard
-            </div>
-        </div>
-    </footer>
-
-    <div class="modal fade" id="addStudentModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add New Student</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addStudentForm">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">First Name *</label>
-                                    <input type="text" class="form-control" id="firstName" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Last Name *</label>
-                                    <input type="text" class="form-control" id="lastName" required>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Student ID *</label>
-                                    <input type="text" class="form-control" id="studentId" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Email Address *</label>
-                                    <input type="email" class="form-control" id="email" required>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Program *</label>
-                                    <select class="form-select" id="program" required>
-                                        <option value="">Select Program</option>
-                                        <option value="BS Computer Science">BS Computer Science</option>
-                                        <option value="BS Information Technology">BS Information Technology</option>
-                                        <option value="BS Information Systems">BS Information Systems</option>
-                                        <option value="BS Computer Engineering">BS Computer Engineering</option>
-                                        <option value="BS Electronics Engineering">BS Electronics Engineering</option>
-                                        <option value="BS Electrical Engineering">BS Electrical Engineering</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Year Level *</label>
-                                    <select class="form-select" id="yearLevel" required>
-                                        <option value="">Select Year</option>
-                                        <option value="1st Year">1st Year</option>
-                                        <option value="2nd Year">2nd Year</option>
-                                        <option value="3rd Year">3rd Year</option>
-                                        <option value="4th Year">4th Year</option>
-                                        <option value="5th Year">5th Year</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Date of Birth</label>
-                                    <input type="date" class="form-control" id="dateOfBirth">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Gender</label>
-                                    <select class="form-select" id="gender">
-                                        <option value="">Select Gender</option>
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Address</label>
-                            <textarea class="form-control" id="address" rows="2"></textarea>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Phone Number</label>
-                            <input type="tel" class="form-control" id="phoneNumber">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="isActive" checked>
-                                <label class="form-check-label" for="isActive">
-                                    Active Student
-                                </label>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="saveStudentBtn">Save Student</button>
-                </div>
-            </div>
-        </div>
+  <!-- Footer -->
+  <footer id="footer" class="footer">
+    <div class="container copyright text-center mt-4">
+      <p>© <span>Copyright</span> <strong class="px-1 sitename">Bicol University</strong> <span>All Rights Reserved</span></p>
+      <div class="credits">
+        Student Management System v2.0 | Admin Portal
+      </div>
     </div>
+  </footer>
 
-    <div class="modal fade" id="editStudentModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Student Information</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="editStudentForm" enctype="multipart/form-data">
-                        <input type="hidden" id="editStudentIdHidden">
-                        <input type="hidden" id="editProfileImageBase64">
-                        
-                        <h6 class="mb-3 text-primary"><i class="bi bi-person"></i> Basic Information</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Student ID *</label>
-                                    <input type="text" class="form-control" id="editStudentId" readonly>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Username *</label>
-                                    <input type="text" class="form-control" id="editUsername" required>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">First Name *</label>
-                                    <input type="text" class="form-control" id="editFirstName" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Last Name *</label>
-                                    <input type="text" class="form-control" id="editLastName" required>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Email Address *</label>
-                                    <input type="email" class="form-control" id="editEmail" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Phone Number</label>
-                                    <input type="tel" class="form-control" id="editPhoneNumber">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <h6 class="mb-3 mt-4 text-primary"><i class="bi bi-graduation-cap"></i> Academic Information</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Program/Course *</label>
-                                    <select class="form-select" id="editProgram" required>
-                                        <option value="">Select Program</option>
-                                        <option value="BS Information Technology">BS Information Technology</option>
-                                        <option value="BS Computer Science">BS Computer Science</option>
-                                        <option value="BS Electrical Engineering">BS Electrical Engineering</option>
-                                        <option value="BS Mechanical Engineering">BS Mechanical Engineering</option>
-                                        <option value="BS Education">BS Education</option>
-                                        <option value="BS Nursing">BS Nursing</option>
-                                        <option value="BS Business Administration">BS Business Administration</option>
-                                        <option value="BS Accountancy">BS Accountancy</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Year Level *</label>
-                                    <select class="form-select" id="editYearLevel" required>
-                                        <option value="">Select Year</option>
-                                        <option value="1st Year">1st Year</option>
-                                        <option value="2nd Year">2nd Year</option>
-                                        <option value="3rd Year">3rd Year</option>
-                                        <option value="4th Year">4th Year</option>
-                                        <option value="5th Year">5th Year</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <h6 class="mb-3 mt-4 text-primary"><i class="bi bi-person-vcard"></i> Personal Information</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Date of Birth</label>
-                                    <input type="date" class="form-control" id="editDateOfBirth">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Gender</label>
-                                    <select class="form-select" id="editGender">
-                                        <option value="">Select Gender</option>
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Nationality</label>
-                                    <input type="text" class="form-control" id="editNationality" placeholder="Filipino">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Marital Status</label>
-                                    <select class="form-select" id="editMaritalStatus">
-                                        <option value="">Select Status</option>
-                                        <option value="Single">Single</option>
-                                        <option value="Married">Married</option>
-                                        <option value="Divorced">Divorced</option>
-                                        <option value="Widowed">Widowed</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Blood Type</label>
-                                    <select class="form-select" id="editBloodType">
-                                        <option value="">Select Blood Type</option>
-                                        <option value="A+">A+</option>
-                                        <option value="A-">A-</option>
-                                        <option value="B+">B+</option>
-                                        <option value="B-">B-</option>
-                                        <option value="AB+">AB+</option>
-                                        <option value="AB-">AB-</option>
-                                        <option value="O+">O+</option>
-                                        <option value="O-">O-</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Address</label>
-                            <textarea class="form-control" id="editAddress" rows="2"></textarea>
-                        </div>
-                        
-                        <h6 class="mb-3 mt-4 text-primary"><i class="bi bi-person-exclamation"></i> Emergency Contact</h6>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Contact Person</label>
-                                    <input type="text" class="form-control" id="editEmergencyContactName">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Relationship</label>
-                                    <select class="form-select" id="editEmergencyContactRelationship">
-                                        <option value="">Select Relationship</option>
-                                        <option value="Father">Father</option>
-                                        <option value="Mother">Mother</option>
-                                        <option value="Guardian">Guardian</option>
-                                        <option value="Spouse">Spouse</option>
-                                        <option value="Sibling">Sibling</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Phone Number</label>
-                                    <input type="tel" class="form-control" id="editEmergencyContactPhone">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <h6 class="mb-3 mt-4 text-primary"><i class="bi bi-image"></i> Profile Image</h6>
-                        <div class="mb-3">
-                            <div class="text-center mb-3">
-                                <img id="editProfileImagePreview" src="assets/img/student-avatar.jpg" 
-                                     alt="Profile Preview" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 3px solid #dee2e6;">
-                            </div>
-                            <label class="form-label">Upload New Profile Image</label>
-                            <input type="file" class="form-control" id="editProfileImage" accept="image/jpeg,image/jpg,image/png,image/gif">
-                            <small class="text-muted">Accepted formats: JPG, PNG, GIF (Max 5MB)</small>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="updateStudentBtn">Update Student</button>
-                </div>
-            </div>
+  <!-- Avatar Upload Modal -->
+  <div class="modal fade" id="avatarUploadModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Change Profile Picture</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-    </div>
-
-    <div class="modal fade" id="deleteConfirmModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm Delete</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to delete this student record? This action cannot be undone.</p>
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle"></i>
-                        <strong>Warning:</strong> Deleting this student will remove all associated records.
-                    </div>
-                    <div class="student-info-preview" id="deleteStudentInfo">
-                        </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete Student</button>
-                </div>
+        <form method="POST" enctype="multipart/form-data" id="avatarUploadForm">
+          <div class="modal-body">
+            <div class="avatar-preview text-center mb-4">
+              <div class="avatar-preview-container">
+                <img src="<?php echo htmlspecialchars($profileImageSrc); ?>" alt="Preview" id="avatarPreview" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover;">
+              </div>
+              <small class="text-muted">Preview of your profile picture</small>
             </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="viewStudentModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Student Details</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="student-details-view" id="studentDetails">
-                        </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="editFromViewBtn">Edit Student</button>
-                </div>
+            
+            <div class="upload-options">
+              <div class="upload-option">
+                <input type="file" name="profile_image" id="avatarFileInput" accept="image/jpeg,image/jpg,image/png,image/gif" required>
+                <label for="avatarFileInput" class="btn btn-outline-primary w-100">
+                  <i class="bi bi-upload"></i> Choose Photo
+                </label>
+                <small class="text-muted d-block mt-2">Accepted formats: JPG, PNG, GIF (Max 5MB)</small>
+              </div>
             </div>
-        </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveAvatarBtn">Save Changes</button>
+          </div>
+        </form>
+      </div>
     </div>
-
-    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/vendor/aos/aos.js"></script>
+  </div>
+  
+  <script>
+    // Preview image before upload
+    const avatarFileInput = document.getElementById('avatarFileInput');
+    const avatarPreview = document.getElementById('avatarPreview');
     
-    <script src="assets/js/admin.js"></script>
+    if (avatarFileInput) {
+      avatarFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          // Validate file size (max 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+            alert('File size should be less than 5MB');
+            this.value = '';
+            return;
+          }
+          
+          // Validate file type
+          const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+          if (!allowedTypes.includes(file.type)) {
+            alert('Please select a valid image file (JPG, PNG, or GIF)');
+            this.value = '';
+            return;
+          }
+          
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            avatarPreview.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
     
-    <!-- Dark Mode JS -->
-    <script src="assets/js/dark-mode.js"></script>
+    // Open modal when clicking change avatar button
+    const changeAvatarBtn = document.getElementById('changeAvatarBtn');
+    const avatarUploadModal = new bootstrap.Modal(document.getElementById('avatarUploadModal'));
     
-    <script>
-        // Profile image preview in edit modal
-        document.getElementById('editProfileImage')?.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('editProfileImagePreview').src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    </script>
+    if (changeAvatarBtn) {
+      changeAvatarBtn.addEventListener('click', function() {
+        avatarUploadModal.show();
+      });
+    }
+    
+    // Profile dropdown functionality
+    const profileTrigger = document.getElementById('profileTrigger');
+    const profileDropdown = document.getElementById('profileDropdown');
+    
+    if (profileTrigger && profileDropdown) {
+      profileTrigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        profileDropdown.classList.toggle('show');
+      });
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!profileTrigger.contains(e.target) && !profileDropdown.contains(e.target)) {
+          profileDropdown.classList.remove('show');
+        }
+      });
+    }
+  </script>
+
+  <!-- Vendor JS Files -->
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/aos/aos.js"></script>
+  
+  <!-- Student Profile JS (reused for admin) -->
+  <script src="assets/js/student-profile.js"></script>
+  
+  <!-- Dark Mode JS -->
+  <script src="assets/js/dark-mode.js"></script>
+  
+  <!-- Notifications JS -->
+  <script src="assets/js/notifications.js"></script>
 </body>
 </html>
+

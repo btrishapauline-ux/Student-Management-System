@@ -23,7 +23,7 @@ $login_table = '';
 if ($user_type === 'admin') {
     $user_table = 'admin';
     $login_id_field = 'admin_id';
-    $name_field = 'name';
+    $name_field = 'full_name';
 } elseif ($user_type === 'student') {
     $user_table = 'students';
     $login_id_field = 'student_id';

@@ -15,6 +15,69 @@ if (!isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'admin') {
 // Initialize count variable
 $totalStudents = 0;
 
+// Load admin profile data
+$adminId = (int)$_SESSION['user_id'];
+$adminName = 'Admin User';
+$adminPosition = 'System Administrator';
+$profileImageSrc = 'assets/img/admin-avatar.jpg';
+
+// Check if profile_image column exists
+$checkColumnSql = "SHOW COLUMNS FROM admin LIKE 'profile_image'";
+$columnExists = false;
+$checkResult = $conn->query($checkColumnSql);
+if ($checkResult && $checkResult->num_rows > 0) {
+    $columnExists = true;
+}
+
+// Check which columns exist in the admin table
+$allowedColumns = ['full_name', 'position'];
+$existingColumns = [];
+
+foreach ($allowedColumns as $col) {
+    // SHOW COLUMNS doesn't support prepared statements, but we're using a whitelist so it's safe
+    $escapedCol = $conn->real_escape_string($col);
+    $checkColSql = "SHOW COLUMNS FROM admin LIKE '{$escapedCol}'";
+    $checkColResult = $conn->query($checkColSql);
+    if ($checkColResult && $checkColResult->num_rows > 0) {
+        $existingColumns[] = $col;
+    }
+}
+
+if ($columnExists) {
+    $existingColumns[] = 'profile_image';
+}
+
+// Build SQL query
+$selectFields = implode(', ', array_map(function($col) {
+    return "a.`{$col}`";
+}, $existingColumns));
+
+if (!empty($selectFields)) {
+    $sql = "SELECT {$selectFields} FROM admin a WHERE a.admin_id = ?";
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->bind_param('i', $adminId);
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            if ($row = $result->fetch_assoc()) {
+                $adminName = htmlspecialchars(trim($row['full_name'] ?? 'Admin User'));
+                $adminPosition = htmlspecialchars(trim($row['position'] ?? 'System Administrator'));
+                
+                // Get profile image
+                if ($columnExists && !empty($row['profile_image'])) {
+                    $profileImageSrc = 'data:image/jpeg;base64,' . $row['profile_image'];
+                } elseif (file_exists('assets/img/admin-avatar.jpg')) {
+                    $profileImageSrc = 'assets/img/admin-avatar.jpg';
+                } else {
+                    // Use SVG placeholder if image doesn't exist
+                    $profileImageSrc = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150"><rect fill="#ddd" width="150" height="150"/><text fill="#999" font-family="Arial" font-size="50" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">Admin</text></svg>');
+                }
+            }
+        }
+        $stmt->close();
+    }
+}
+
 // Check if the connection worked
 if (isset($conn) && $conn->connect_error) {
     // If connection failed, assign the error message
@@ -71,6 +134,9 @@ if (isset($conn) && $conn->connect_error) {
     
     <!-- Dark Mode CSS -->
     <link href="assets/css/dark-mode.css" rel="stylesheet">
+    
+    <!-- Notifications CSS -->
+    <link href="assets/css/notifications.css" rel="stylesheet">
 </head>
 
 <body class="admin-page">
@@ -91,13 +157,47 @@ if (isset($conn) && $conn->connect_error) {
                 <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
             </nav>
 
+            <!-- Notification Bell Container -->
+            <div class="notification-bell-container">
+                <div class="notification-bell" id="notificationBell">
+                    <i class="bi bi-bell"></i>
+                    <span class="notification-badge" id="notificationBadge">0</span>
+                </div>
+
+                <!-- Notification Dropdown -->
+                <div class="notification-dropdown" id="notificationDropdown">
+                <div class="notification-dropdown-header">
+                    <h5>Notifications</h5>
+                    <div class="notification-dropdown-actions">
+                        <button class="btn-notification-header" id="markAllReadBtn" title="Mark all as read">
+                            <i class="bi bi-check-all"></i>
+                        </button>
+                        <button class="btn-notification-header" id="clearAllNotificationsBtn" title="Clear all">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="notification-list" id="notificationList">
+                    <div class="notification-empty">
+                        <i class="bi bi-bell-slash"></i>
+                        <p>Loading notifications...</p>
+                    </div>
+                </div>
+                <div class="notification-dropdown-footer">
+                    <button class="btn-view-all" onclick="notificationSystem.loadNotifications()">
+                        Refresh
+                    </button>
+                </div>
+            </div>
+            </div>
+
             <div class="profile-dropdown">
                 <div class="profile-trigger" id="profileTrigger">
                     <div class="profile-avatar">
-                        <img src="assets/img/admin-avatar.jpg" alt="Admin Avatar" id="profileAvatar">
+                        <img src="<?php echo htmlspecialchars($profileImageSrc); ?>" alt="Admin Avatar" id="profileAvatar">
                     </div>
                     <div class="profile-info">
-                        <span class="profile-name" id="profileName">Admin User</span>
+                        <span class="profile-name" id="profileName"><?php echo $adminName; ?></span>
                         <span class="profile-role">Administrator</span>
                     </div>
                     <i class="bi bi-chevron-down"></i>
@@ -105,10 +205,10 @@ if (isset($conn) && $conn->connect_error) {
                 
                 <div class="profile-dropdown-menu" id="profileDropdown">
                     <div class="dropdown-header">
-                        <img src="assets/img/admin-avatar.jpg" alt="Admin Avatar" id="dropdownAvatar">
+                        <img src="<?php echo htmlspecialchars($profileImageSrc); ?>" alt="Admin Avatar" id="dropdownAvatar">
                         <div>
-                            <h6 id="dropdownName">Admin User</h6>
-                            <span>System Administrator</span>
+                            <h6 id="dropdownName"><?php echo $adminName; ?></h6>
+                            <span><?php echo $adminPosition; ?></span>
                         </div>
                     </div>
                     <div class="dropdown-divider"></div>
@@ -717,6 +817,9 @@ if (isset($conn) && $conn->connect_error) {
     
     <!-- Dark Mode JS -->
     <script src="assets/js/dark-mode.js"></script>
+    
+    <!-- Notifications JS -->
+    <script src="assets/js/notifications.js"></script>
     
     <script>
         // Profile image preview in edit modal

@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once('db.php');
+require_once('notification_helper.php');
 
 // Redirect if not logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'student') {
@@ -59,6 +60,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->execute()) {
                 $statusMsg = 'Profile information saved successfully!';
                 $statusType = 'success';
+                
+                // Create notification for all admins about profile update
+                $studentName = $firstname . ' ' . $lastname;
+                create_notification_for_all_admins(
+                    'Student Profile Updated',
+                    "Student profile has been updated: {$studentName} (ID: {$studentId})",
+                    'info'
+                );
+                
                 // Redirect to profile page after 2 seconds
                 header("refresh:2;url=profile.php");
             } else {

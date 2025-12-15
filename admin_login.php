@@ -23,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Check if fields are empty
     if (empty($username) || empty($password)) {
-        $_SESSION['login_error'] = "Please enter both usernamse and password.";
+        $_SESSION['login_error'] = "Please enter both username and password.";
         header("location:admin_login.php");
         exit();
     }
